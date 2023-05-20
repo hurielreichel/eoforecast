@@ -1,0 +1,44 @@
+---
+title: "NO2 Forecasting using Sentinel 5P and Weather Forecast data: a Deep Learning Approach"
+author: "Huriel Reichel"
+format: pdf
+editor: visual
+---
+
+## Introduction
+
+### Background
+
+#### Weather and Pollution Forecasting
+
+#### Time Series Forecasting
+
+#### Spatial Data Cubes and Sentinel 5P
+
+#### Spacetime Deep Learning
+
+### Current Work
+
+#### Objectives
+
+#### Research Questions
+
+## Methodology
+
+### S5P Data Acquisition and Wrangling through openEO
+
+### ERA5 Data Acquisition through ECMWF's API
+
+### Development of the Neural Network
+
+### Validation Procedure
+
+### Hardware and Reproducibility
+
+## Results & Discussion
+
+### Performance Analysis
+
+### Benchmarking
+
+## Conclusion

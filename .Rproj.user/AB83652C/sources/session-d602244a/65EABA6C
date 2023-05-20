@@ -1,0 +1,26 @@
+{
+    "id": "65EABA6C",
+    "path": "~/msc-thesis/eoforecast/R/download.R",
+    "project_path": "R/download.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1683046800556.0,
+    "source_on_save": false,
+    "relative_order": 6,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "160,2",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1683049115,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1683049115873,
+    "read_only": false,
+    "read_only_alternatives": []
+}
