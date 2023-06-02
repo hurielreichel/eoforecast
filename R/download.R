@@ -109,8 +109,11 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
   # Create sequence tensor
   cube_array_seq <- array(0, dim = c(dim(cube_array)[1] - seq_len + 1, seq_len, dim(cube_array)[2], dim(cube_array)[3], dim(cube_array)[4]))
   for (i in 1:(dim(cube_array)[1] - seq_len + 1)) {
-    cube_array_seq[i,, , ,] <- cube_array[i:(i + seq_len - 1), , , ]
+    cube_array_seq[i, , , ,] <- cube_array[i:(i + seq_len - 1), , , ]
   }
+
+  rm(cube_array)
+  gc()
 
   # Replace NAs and NaNs with 0
   cube_array_seq[is.na(cube_array_seq)] <- 0
@@ -118,6 +121,9 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
 
   # convert to tensor
   cube_tensor <- torch_tensor(cube_array_seq, dtype = torch_float())
+
+  rm(cube_array_seq)
+  gc()
 
   # Convert cube_tensor to data frame
   # df <- reshape2::melt(cube_tensor %>% as.array(), varnames = c("Time", "Seq", "Channel", "X", "Y"))
@@ -131,11 +137,12 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
   #   scale_fill_gradient(low = "white", high = "red")
 
   # Split into training and validation sets
-  train_size <- floor(dim(cube_tensor)[1] * train_pct)
-  train_data <- cube_tensor[1:train_size, , , , ]
-  val_data <- cube_tensor[(train_size+1):dim(cube_tensor)[1], , , , ]
+  train_size <- floor(seq_len * train_pct)
+  # train_data <- cube_tensor[1:train_size, , , , ]
+  # val_data <- cube_tensor[(train_size+1):dim(cube_tensor)[1], , , , ]
 
-  # Create dummy dataset object from the tensor
+  full_size <- dim(cube_tensor)[2]
+
   dummy_ds <- dataset(
 
     initialize = function(data) {
@@ -143,22 +150,20 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
     },
 
     .getitem = function(i) {
-      list(x = self$data[i, , , , ], y = self$data[i, seq_len, , , ])
+      list(x = self$data[i, 1:train_size, ..], y = self$data[i, seq_len, ..])
     },
 
     .length = function() {
-      dim(self$data)[1]
+      nrow(self$data)
     }
   )
 
   # Create dataloaders from the datasets
-  train_ds <- dummy_ds(train_data)
-  train_dl <- dataloader(train_ds, batch_size = batch_size, shuffle = TRUE)
+  train_ds <- dummy_ds(cube_tensor)
+  train_dl <- dataloader(train_ds, batch_size = batch_size, shuffle = FALSE)
 
-  val_ds <- dummy_ds(val_data)
-  val_dl <- dataloader(val_ds, batch_size = batch_size, shuffle = FALSE)
-
-  return(list(train_dl, val_dl))
+  cli_alert_info(paste("Validation Set start at", train_size+1))
+  return(train_dl)
 }
 
 

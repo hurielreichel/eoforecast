@@ -167,6 +167,7 @@ train_convlstm <- function(dl,
   cli::cli_progress_bar("Training convlstm", total = num_epochs)
   for (epoch in 1:num_epochs) {
 
+    cli::cli_progress_update()
     model$train()
     batch_losses <- c()
 
@@ -184,14 +185,22 @@ train_convlstm <- function(dl,
 
       loss$backward()
       optimizer$step()
-      cli::cli_progress_update()
 
     })
+
+    # Early stopping
+    if (epoch > 10){
+      if (losses[epoch] >= losses[1]){
+        stop(cli::cli_abort("Early Stopping triggered"))
+      }
+    }
 
     if (epoch %% 10 == 0)
       cat(sprintf("\nEpoch %d, training loss:%3f\n", epoch, mean(batch_losses)))
   }
   cli::cli_progress_done()
+
+  losses <- zoo::rollapply(losses, width = 3, FUN = mean, by = 3, align = "left", fill = NA) %>% na.omit()
 
   # create learning rate plot
   learning_curve <- tibble(epoch = 1:num_epochs, loss = losses) %>%
