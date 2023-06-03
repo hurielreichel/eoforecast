@@ -16,7 +16,7 @@ read_ecwmfr_netcdf <- function(path_to_nc = "vignettes/data/adaptor.mars.interna
 
 }
 
-create_dl_with_weather <- function(weather_cube, path_to_tiffs = "vignettes/data/switzerland", batch_size = 100, train_pct = 0.8, seq_len = 4) {
+create_dl_with_weather <- function(weather_cube, path_to_tiffs = "vignettes/data/switzerland", batch_size = 100, train_pct = 0.8, seq_len = 4, device_device) {
 
   # Get all the file paths in the directory
   file_paths <- list.files(path = path_to_tiffs, pattern = "*\\.tif$", full.names = TRUE)
@@ -52,7 +52,7 @@ create_dl_with_weather <- function(weather_cube, path_to_tiffs = "vignettes/data
   cube_array_seq[is.nan(cube_array_seq)] <- 0
 
   # convert to tensor
-  cube_tensor <- torch_tensor(cube_array_seq, dtype = torch_float())
+  cube_tensor <- torch_tensor(cube_array_seq, dtype = torch_float(), device = device)
 
   rm(cube_array_seq)
   gc()

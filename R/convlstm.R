@@ -155,9 +155,11 @@ train_convlstm <- function(dl,
                            input_dim = 1,
                            hidden_dims = c(64, 1),
                            kernel_sizes = c(3, 3),
-                           n_layers = 2){
+                           n_layers = 2,
+                           .device = device){
 
   model <- convlstm(input_dim = input_dim, hidden_dims = hidden_dims, kernel_sizes = kernel_sizes, n_layers = n_layers)
+  model <- model$to(device = .device)
 
   ### Adam optimizer
   optimizer <- optim_adam(model$parameters)
@@ -181,10 +183,11 @@ train_convlstm <- function(dl,
       loss <- nnf_mse_loss(preds, b$y)
       losses <- c(losses, as.numeric(loss))
       cli::cli_alert(paste("Loss:", (loss %>% as.numeric() %>% round(3))))
-      batch_losses <- c(batch_losses, loss$item())
 
       loss$backward()
       optimizer$step()
+
+      train_losses <- c(train_losses, loss$item)
 
     })
 
@@ -196,8 +199,12 @@ train_convlstm <- function(dl,
     }
 
     if (epoch %% 10 == 0)
-      cat(sprintf("\nEpoch %d, training loss:%3f\n", epoch, mean(batch_losses)))
+      cat(sprintf("\nEpoch %d, training loss:%3f\n", epoch, mean(batch_losses, na.rm = T)))
+
+    model$eval()
+
   }
+
   cli::cli_progress_done()
 
   losses <- zoo::rollapply(losses, width = 3, FUN = mean, by = 3, align = "left", fill = NA) %>% na.omit()

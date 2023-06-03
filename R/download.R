@@ -95,7 +95,7 @@ download_s5p_from_openeo <- function( country = NULL,
     cli::cli_rule();cli::cli_end()
 }
 
-create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", batch_size = 100, train_pct = 0.8, seq_len = 12) {
+create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", batch_size = 100, train_pct = 0.8, seq_len = 12, device = device) {
 
   # Get all the file paths in the directory
   file_paths <- list.files(path = path_to_tiffs, pattern = "*\\.tif$", full.names = TRUE)

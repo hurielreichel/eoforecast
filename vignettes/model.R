@@ -3,6 +3,8 @@ library(eoforecast)
 # dummy input tensor
 # x <- torch_rand(c(2, 4, 3, 16, 16)) # batch_size, seq_len, channels, height, width
 
+device <- torch_device(if(cuda_is_available()) {"cuda"}else{"cpu"})
+
 ## Sanity Check
 # dl <- create_dummy_data()
 # preds <- train_convlstm(dl = dl, 10, plot_path = "vignettes/learning_curve-sanity.png")
