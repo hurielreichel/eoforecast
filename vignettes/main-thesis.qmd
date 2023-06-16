@@ -3,42 +3,203 @@ title: "NO2 Forecasting using Sentinel 5P and Weather Forecast data: a Deep Lear
 author: "Huriel Reichel"
 format: pdf
 editor: visual
+bibliography: references.bib
 ---
 
 ## Introduction
+
+Nitrogen dioxide ($NO_2$ ) is a greenhouse gas strongly related to respiratory diseases (Heinrich et al., 1999, Hagen et al., 2000) often used as reference for pollution indicators together with carbon dioxide ($CO_2$ ). Monitoring the presence of this gas in the atmosphere is therefore of high health importance, and the same could be said of its forecasting.
+
+Classic weather (including air quality) forecasting makes use of a series of data-sets, including weather stations, satellite imagery, radar data, etc., and includes them for computation in physical models requiring super computers ([@rasp2020]). However, other strategies have been investigated that demand less computational cost and can reach similar results ( @rasp2021 ). These strategies involve using deep learning for the predictive analysis, mainly using time-series data from weather stations ( @kurt2008 ; @russo2013 ; @tsai2018 ; @kaselimi2020 ; @masood2021 ; @samal2021 ; @heydari2021 ).
+
+By considering deep learning as a predictive model for pollution, one cannot ignore its ability to detect multiple variability and abstractness in data. Not only that, but it can take into account different sources of data. And when considering the availability of data related to $NO_2$ monitoring, one cannot ignore the imagery from Copernicus's SENTINEL 5P (S5P) satellite. This spacecraft has a daily temporal resolution by covering the entire earth, which makes of it a substantial possibility for a world-wide forecasting scenario, especially when using deep learning. Making use of this dataset and deep learning's abstractness capabilities, it is possible to forecast the whole pollution surface (pixel by pixel) in different future times, in spite of considering the aggregated time-series singularly.
+
+As a primary aim, a deep learning model is trained and evaluated using beyond time-series data, but the series of satellite imagery from SENTINEL 5P for $NO_2$ daily forecasting. The architecture to be applied is inspired by the one used by Shi et al., 2015, Liu et al., 2018 and Wen et al., 2019, and consists of a Convolutional Long Short-Term Neural Network (CNN-LSTM). The main rationale is to make use of both space (through the convolution - CNN) and time (through the LSTM) to forecast new "frames" in SENTINEL 5P images. This has already been tested in similar approaches, as the one from Heydari et al. (2021 @heydari2021), although what has not been explored yet is the use of weather related covariables that could aid the forecasting goal. Many weather related phenomena affect the chemical reactions behind $NO_2$ formation in the atmosphere, which are also variables measured spatially and temporally. The goal is then to compare a CNN-LSTM model with weather related covariables and without them in therms of computational complexity and mostly accuracy in daily forecasts.
+
+Nevertheless, before one reaches that, the next topic is here to present to give some deeper background on the topic of pollution forecasts and Deep Learning for the purpose of forecasting it.
 
 ### Background
 
 #### Weather and Pollution Forecasting
 
+As before mentioned, $NO_2$ is strongly associated with respiratory diseases (@zhang2018; @jo2021), hence it is deeply studied and often considered a target variable in pollution oriented research. This is only more clear, when looking at works focused on forecasting pollution (@shams2021 ; @pawul2016 ; @ebrahimighadi2018 ; @mohammadi2016 ), where regardless of the model used, $NO_2$, among other possible chemicals, is central in these modelling works. In that sense, it is of high importance to first better understand this chemical, and mostly how it is formed into the atmosphere.
+
+Nitrogen dioxide ($NO_2$) is a gaseous air pollutant that forms in the atmosphere primarily through the oxidation of nitrogen oxide ($NO$) in the presence of sunlight and other atmospheric constituents. The formation of $NO_2$ is closely linked to several chemical and physical processes, and weather conditions play a significant role in its formation, transformation, and dispersion in the atmosphere.
+
+To what concerns the formation mechanism of this chemical, sunlight is crucial for the so called process of photochemical conversion of $NO$ into $NO_2$ when combined with $O_3$ (Ozone) (@wood2009). This is the case even considering that anthropogenic sources like vehicle emissions, industrial activities and power generation. Hence sunlight availability is of root importance for the presence of NO2 in the atmosphere. Not only that, temperature acts as a catalyst for chemical reactions, and usually the higher, the higher the chance for $NO_2$ presence (@wood2009 ). Other factor, just as important are phenomena directly linked to the atmosphere's stability, causing the movement of the gas among the different air layers. Those variables can be indicated by measures of wind speed, wind direction and precipitation, for example. Grundström et al (2015 - @grundström2015 ) appoints wind speed, vertical temperature gradient and weather type as variables with a strong relationship with the presence of $NO_2$ .
+
+A similar work is presented by Samal et al (2021 @samal2021 ), which compares the use of several different models to forecast PM2.5, another pollutant indicator, making use of weather related variables as supporters, being them wind speed, temperature, wind direction, rainfall, and humidity. In their work, this relationship is tested in those models and it is left as clear how important they are and that weather variables should be used for more accurate pollution forecasting. In summary, one could add that weather is extremely relevant for explaining pollution and it should be considered when attempting to forecast it in a data-driven approach.
+
 #### Time Series Forecasting
+
+Pollution forecasting is from many perspectives a time-series challenge (@freeman2018; @samal2021 ) and it has been approached as so by researchers. A time-series is essentially a set of observations stored in a sequence, which finally corresponds to time @chatfield2000time. Regardless of the model, if within a data-driven approach, the logic is to use past information to take assumption on the future. Any new information will be given based on past one. This is the approach present in the works of @zhu2018 and @kumar2009 that make use of ARIMA based models, but also of works that developed neural networks for similar tasks [@freeman2018; @agirre-basurko2006; @kurt2008; @samal2021; @tsai2018].
+
+In general, given the abstraction level of the phenomenon, deep learning approaches tend to reach more accurate results (@samal2021 ; @pawul2016; @shams2021; @rasp2020 ) than standard statistical or even other machine learning approaches ("shallow" ones). Nevertheless, the limit of what be done with deep learning models is still far to be reached, and research reaching more and more accurate results are constant. Exploring this further is therefore a systemic scientific work.
+
+Moreover, @wen2019 makes use of a sophisticated neural network architecture for the forecast of pollutants, whilst @samal2021 goes further and uses a similar model to forecast the same variable, although now using weather supportive variables. Although, one important aspect is missing in all of these works. The analysis of the spatial pattern of results. Space is completely ignored in the analysis of results, and every model, pehaps even includes the spatial component in the modelling itself, but aggregates it to a typical times series in the end. Questions related to the spatial pattern of the forecast errors or the presence of spatial dependence in forecasts are all neglected when the topic of pollution forecasting is dismantled into having only the temporal component.
+
+Whenever decision have to be made regarding pollution, this decision has boundaries associated to political frontiers. When considering the temporal component only, space and important aspects of it are neglected in the analysis. Hence, whenever research has been made about the use of deep learning for pollution forecasting, it is either space which is forgotten in the model or in the results, or weather that is not being considered as a covariable. A gap in literature is therefore present.
 
 #### Spatial Data Cubes and Sentinel 5P
 
+Once more, it was mentioned that past work is above all focused on "time-only" models. The input data for these models is based overall on sensors on-board weather stations spread all over Earth's surface or even other systems constantly measuring the desired variable. For that reason, if these stations are not considered into a single model, space is ignored. Nevertheless, now considering a space oriented model, what is the kind of input data one can expect?
+
+Fortunately, Earth Observation technology has been substantially advancing and the deployment of satellites in closer ranges are constantly imaging Earth's and other planets surfaces for full coverage data. These includes RGB imagery, Infrared imagery, Water Coverage, Albedo, Digital Elevation data, and many others. Among the several missions to do so, an important spotlight shall be given to the Copernicus Missions for the European Space Agency (ESA). The completely free-access terabytes of data derive mainly from the Sentinel satellites aimed at giving Europe autonomous capacity in plenty of Earth Observation tasks (@jutz2020). For the task of pollution forecasting, there is Sentinel 5P (S5P), which on-boards the [TROPOMI](https://www.esa.int/Applications/Observing_the_Earth/Copernicus/Sentinel-5P/Tropomi) sensor, the most advanced multispectral imaging spectrometer to date (2023). With its global coverage, TROPOMI measures the ultraviolet and visible, near-infrared and shortwave infrared spectral bands, what supports a high accurate capture of pollutants such as $NO_2$, $O_3$ , $CH_2O$ , $SO_2$ , $CH_4$ and $CO$ .
+
+![Illustrative Figure of the S5P satellite and the variables its sensor (TROPOMI) is constantly measuring. Source: ESA](fig/tropomi.png "Figure"){#tropomi .illustration fig-align="center"}
+
+To what refers to weather related data, considering the same format, *i.e.,* preserving the spatial component, an important source of that is the European Centre for Medium-Range Weather Forecasts (ECMWF). Among their many datasets, a very popular one is ERA5 (Reanalysis v5), which has also global coverage and ranges from today to 1940. It contains several weather related data which can all be freely accessed through an API or a web-portal (@copernicusclimatechangeservice2023 ).
+
+This kind of dataset, where both space and time are covered could be referred as the so called spatial data cubes ( @lu2018 ). The idea is that array data with *n* dimensions are associated with geospatial coordinates and a time reference. Figure 2 below from @pebesma2023 represents the data cube having *x* and *y* coordinates (longitude and latitude, for instance) and also the time in a *z* axis. The data itself, whatever it refers to, represents the values itself that the array will possess. Therefore, the spatial and temporal information is to some extent masked by the array dimensions. Moreover, It is important to mention that the cube will then have even more dimensions considering that there could be covariables, such as the weather related ones discussed before. This will of course add complexity, but the most interesting part is that this is still useful.
+
+![Representation of a Spatial Data Cube. Source. Pebesma and Bivand, 2023](fig/data-cube.png){fig-align="center"}
+
+The structure of the data cube is especially interesting for the purpose of forecasting atmospheric pollutants as it can be quite simply converted into a tensor, the input format required for a neural network in most applications. The topic of a tensor will be discussed further.
+
 #### Spacetime Deep Learning
+
+Given the high dimensionality and hence high complexity of the input data coming form spatial data cubes, one may be asking how can this level of level of multidimensionality be treated and maintaned with any model? This is possible within a deep learning framework, making use of deep neural networks.
+
+Neural networks are computational models inspired by the structure and function of biological neural networks in the human brain (@wei2020). They consist of interconnected layers of artificial neurons, also known as nodes or units. Each neuron takes inputs, performs a computation, and produces an output that is transmitted to other neurons. Through a process called "training", neural networks learn to adjust the strengths of connections (weights) between neurons in order to approximate desired input-output mappings. Figure 3 demonstrates the neurons and weights that programmatically iterated to reach optimal results.
+
+[![Neural Network model, represented with the objective of image classification. Source: Wolchover, Natalie (2019)](fig/neural-network.jpeg){fig-align="center"}](https://wandb.ai/site/articles/fundamentals-of-neural-networks)
+
+The exercise present in Figure 3 is that of an image classification. An input image of a dog is given as input array and it be processes by the different layers, which nodes will be giving iteractive weights until the array is correctly assigned the desired label. Of course, this requires several inputs to be reachable, hence being a considerable extensive methodology.
+
+The key advantage of neural networks in handling high-dimensional data lies in their capacity to learn intricate patterns and relationships within the data, capturing intrinsic abstractness in it, as seen in [@agirre-basurko2006; @masood2021; @pawul2016; @zhao2019]. By utilizing deep neural networks with multiple hidden layers, known as deep learning, these models can automatically extract hierarchical representations of features from the input data. This hierarchical representation allows neural networks to effectively capture complex dependencies and interactions between different dimensions, such as spatial, temporal, and covariable aspects of a spatial data cube.
+
+Here is where tensors come into play. A tensor is a mathematical object that can represent multi-dimensional arrays of data @panagakis2021. In the context of neural networks and spatial data cubes, tensors provide a natural framework for organizing and manipulating such high-dimensional data. A spatial data cube can be conceptualized as a tensor, with each dimension corresponding to a specific aspect of the data, such as spatial coordinates, time, and covariables. The elements of the tensor store the actual values of the data at each point in the cube. Neural networks process tensors as inputs, perform computations on them through various layers, and produce output tensors. The network's parameters, including weights and biases, are learned through training to optimize the model's performance on a given task, such as prediction or classification. A deeper notion of how data cubes can be interpreted as tensors is present in @mahoney2006 .
+
+To handle the computational demands of working with large-scale spatial data cubes, neural networks often require significant computational resources. Graphics Processing Units (GPUs) play a crucial role in accelerating neural network computations. GPUs excel at parallel processing, which allows them to perform many calculations simultaneously. This parallelism enables efficient processing of large amounts of data, making GPUs well-suited for training and inference tasks involved in handling big data.
+
+In summary, neural networks are highly effective in handling high-dimensional spatial data cubes, thanks to their ability to learn complex patterns and relationships. Tensors provide a natural representation for organizing and manipulating such data, with each dimension corresponding to different aspects of the data. Additionally, GPUs provide essential support for efficiently processing big data, enabling neural networks to scale and handle the computational demands of these complex datasets.
+
+#### Architecture
+
+Depending on how are the layers, neurons, and connections structured in a neural network, they are grouped into different architectures @wei2020. The most basic one seen in examples everywhere, such as the one in figure 3, is a Multi-Layer Perceptron (MLP), or Feed Forward Neural Network (FNN). There is one input layer, some hidden layers, and one output layer, and that is the flow of information as well, without any loops or feedback connections. Recurrent Neural Networks (RNN), such as Long-Short Term Memory (LSTM) will add on the MLP and add recurrence and the possibility of storing information learnt in past nodes. For that reason, LSTM are strongly used in time-series forecasting [@kurt2008; @masood2021; @rasp2020; @kaselimi2020]. Among several other architectures, another relevant one in the Convolutional Neural Network (CNN), which is focused on visual data, for instance. These neural networks are developed in a way the are able to detect spatially related patterns in data through the use of several image processing filters with different kernel sizes. CNNs are hence strongly used for object detection, and image classification tasks, for example [@kattenborn2021; @cao2019; @du2018].
+
+When considering the goal to evaluate mainly spatial patterns in $NO_2$ forecasts and having time and space considered in the modelling, a possible approach is the use of a Convolution Long Short Term Memory, or CNN-LSTM / ConvLSTM. The idea is to have both convolutions and a RNN in the same model, in a way that spatial structures can be assimilated through the convolution layers at the same time that as the temporal variable through recurrence (LSTM) [@liu2018.; @10.5555/2969239.2969329; @wen2019].
+
+The works of [@robin2022; @10.5555/2969239.2969329; @liu2018; @samal2021; @beyer2023] demonstrate several applications of ConvLSTM and each of them present slight differences in the composition of the ConvLSTM architecture. How it is truly composed in the end is usually a result of several tests given the specific purpose of the neural network. A general purpose is yet to be known and the testing approach is also expected to happen in the current work. Adaptation to the dataset, scale, temporal and spatial resolution are all characteristics to pay great attention when developing an architecture for a scoped network.
 
 ### Current Work
 
+Once stated the context of Spatiotemporal Deep Learning and of pollution time series forecasting, it is then relevant to state what is the scope of this work and the scientific Dominion it is tied to. As mentioned, many researches focus on different approaches for pollution time series forecasting and only a few of them completely consider both space and time in modelling and even less consider the relevancy of weather when predicting such a correlated variable.
+
+Those restricted articles then do not further analyse the spatial patterns in forecasts made by the models used. Do they follow the same spatio structure as the data before? Do they present heteroscedasticity throughout their surface? Is there a trend in future forecast in terms of space and time? All really relevant topics when working with spatial data, especially considering that the decision making concerning pollution may be present a strong spatial constraints marked by political boundaries.
+
 #### Objectives
+
+Thus, this work is aimed at first investigating the feasibility of using SENTINEL 5P data to train a ConvLSTM neural network to forecast $NO_2$ in both time and space, and, consequently, analyse whether this architecture suits this purpose when adding weather related covariables to it. A comparison is *ergo* required in therms of accuracy, but mostly considering spatial patterns in the errors.
+
+Moreover, it is of extreme importance to evaluate the accuracy decay through time and, hence, verify, how far can predictions go into the future. The same logic is applied to space, verifying whether certain areas tend to be less accurate then others (heteroscedasticity).
+
+A list of specific objectives can be seen below summarising the main targets present in this research.
+
+-   Use of a ConvLSTM to forecast $NO_2$ with the aid of weather covariables
+
+-   Comparison of a ConvLSTM trained with weather covariables and another without in terms of accuracy and spatiotemporal heteroscedasticity.
 
 #### Research Questions
 
+The study will be answering the following research questions:
+
+-   To what extent can one make use of a ConvLSTM neural network to forecast daily $NO_2$ levels with SENTINEL 5P Imagery and weather related covariables?
+
+-   How does a ConvLSTM neural network using SENTINEL 5P and weather data performs compared to the same model without weather covariables, and how does the accuracy decay behaves when trying to predict further in time ?
+
 ## Methodology
+
+The sequence of methods performed can be summarised by the data acquisition and wrangling of S5P data, including download, cloud cover removal and interpolation; followed by the ConvLSTM model development and fine tuning, ended by the validation and analysis of results. Consequently, weather data acquisition and cube merging with S5P data cube is done, which then also follows the steps of fine tuning the model and training with new data, to end with validation and analysis of the forecasts. Figure 4 below demonstrates these steps summarising the methods used to perform this analysis.
+
+[![Summary of Methodology delineating the data acquition and wrangling from both S5P and ERA5 data composing two exercises, one without weather data and the weather with it included. Partially adapated from Hu et al, 2019](fig/methods.png){fig-align="center"}](https://arxiv.org/pdf/1905.03577v1.pdf)
 
 ### S5P Data Acquisition and Wrangling through openEO
 
-### ERA5 Data Acquisition through ECMWF's API
+The methodology started with SENTINEL 5P data acquisition and wrangling. This was done through the [openEO platform](openeo.cloud), which is a cloud service allowing big Earth data operations on data cubes, making use of many open Earth observation datasets. These operations can be done in different client programming languages, such as R, Python, Java or even a Web editor. Using openEO allows for straightforward acquisition through a simple bounding box and a timeline query and the following mask and interpolation operations. The mask refers to removing pixels that could be considered as clouds (disturbing the measured variable) and the interpolation is necessary to fill in the gaps created with the mask using the spatial and temporal neighbours of each empty pixel.
+
+As a matter of fact, cloud remain to be a challenge in almost any remote sensing task. This operation in openEO allows for a trustworthy, but also straightforward approach. Nevertheless, the flag for the cloud cover removal remains open when dealing with SentinelHub data through openEO. This value roughly defines what should or not be considered a cloud in the image. As ESA recommends the use of 0.5 as a value, this has been used. As for the interpolation, a linear interpolation method has been applied.
+
+The chosen area of study is Switzerland, and the vector of the country boundaries had been used as reference for the bounding boxes of the download from openEO. Data from the whole year of 2019 have been used for analysis. For reproducible purposes, inside the R programming language package built for the purpose of this research, the functions use to [download the data from openEO](https://github.com/hurielreichel/eoforecast/blob/master/R/download.R) and to wrangle them into a tensor for further learning are, respectively, `download_s5p_from_openeo` and `create_dl_from_cube`.
+
+### ERA5 Data Acquisition through ECWMF
+
+The download of ERA5 weather related variables has not been done in such an automatic way as for S5P one. ERA5 data is available through ECWMF and not yet integrated to openEO. The access to data has therefore been done through the [ECMWF webportal](https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-complete?tab=form) and the data has been wrangled locally. The variables chosen for analysis were WInd Speed (*m/s*), mean temperatures (*K*), and Precipitation (*m*). All data has been downloaded for the year of 2019 as well.
+
+With the ERA5 data, the most important was to warp and resample it to fit the dimensions of the S5P $NO_2$ data cube. This way, it was possible to create a cube similar of that of $NO_2$ although with one more dimension related to weather. Still about that, the weather variables were summarised into one single, since the more dimensions there are, the higher the chances for over usage of RAM is. For this simplification, all of the three weather related variables were scaled from zero to a hundred and later the following logic was applied:
+
+$w = u_{10} * t_2m - t_p$
+
+where:
+
+-   $w$ refers to the newly created weather related variable (the summarised value);
+
+-   $u_10$ refers to wind speed;
+
+-   $t_2m$ is the mean temperature;
+
+-   $t_p$ is the total precipitation.\
+
+Once more, for the purpose of reproduction of this step, [the functions in the R package that make reference to the wrangling of ERA5 data and their merge with the S5P data to build a tensor](https://github.com/hurielreichel/eoforecast/blob/master/R/weather.R), respectively, are `read_ecwmfr_netcdf`, and `create_dl_with_weather` .
 
 ### Development of the Neural Network
 
+To what refers to the Architecture built and its implementation, the whole model was developed in the R programming language, making use the `torch` @torchlibrary and helpers, such as the `luz` @luz and `torchvision` @torchvision packages. All of these tools are open-source and free to use ones, which allow for [full reproduction of the scripts developed for this work](https://github.com/hurielreichel/eoforecast/blob/master/R/convlstm.R), given the necessary hardware demands.
+
+These libraries and others such as `keras` and `tensorflow` are a few examples of tools created to allow for an easier and more straightforward implementation of deep learning models, including pre defined structures and architectures. In case of `torch` , the ConvLSTM is not implemented *per se*, although both the CNN and LSTM are already developed in a pretty high-level format. Hence, combining them is the most part of the programming challenge when referring to the model itself.
+
+The ConvLSTM model is designed for analysing temporal data and consists of convolutional and LSTM layers. The architecture incorporates multiple layers, with each layer comprising a convolutional component followed by an LSTM component. A total of two ConvLSTM layers have been applied in this work, following other implementations for remote sensing purposes [@10.5555/2969239.2969329; @heydari2021; @wen2019; @samal2021]. The convolutional layers extract spatial features from the input data, utilizing convolutional filters with a fixed kernel size of 3x3. These filters allow the model to detect local patterns and features in the data, capturing spatial dependencies and variations. The kernel size of 3x3 in the convolution layers ensures that the filters operate on a local receptive field, capturing fine-grained spatial patterns. This was also thought on the average pixel size, which is of around 4 km.
+
+The LSTM layers in the ConvLSTM model capture temporal dependencies in the input data. LSTM units are equipped with input, forget, and output gates that regulate the information flow through recurrent connections. The hidden dimensions of the LSTM layers can be customized based on the requirements of the task, and here they were defined with 64 hidden dimensions.
+
+Moreover, During training, the ConvLSTM model optimises its parameters, including the weights and biases of the convolutional and LSTM layers, to minimize a predefined loss function. This loss function is measured and graphed and it strongly indicated the capacity of the model to learn with each epoch, *i.e.,* a complete iteration of the model through the whole dataset.
+
+The figure below, adapted from @hu2019feature, demostrates shortly how the ConvLSTM is built. The convolution layers are passed with their kernel sizes on each pixel of the input data, and after words with the same pixel in the following time layer (*t+1*). After that, the processes repeats itself and new weights are added to the nodes so loss can be diminished.
+
+![ConvLSTM structure demonstrating the convolution layers being passed to each pixel of the input data in current time and the next time reference. Two ConvLSTM layers are passed in total.](fig/convlstm.png){fig-align="center"}
+
+Finally, an important aspect of dealing with temporal models are windows. Windows, in this case, are temporal segmentations of the data, which each segment represents a contiguous sequence of consecutive time steps from the input data. Those are relevant in temporal models as it allows for capturing temporal dependencies and patterns in sequential data. The process of breaking the time series into windows enhances the granularity of the model, and thus support some sort of indirect seasonality and trend extraction from the data @chatfield2000time.
+
+A problem with windows is that they are RAM demanding, and a reasonable number in those terms must be set. For this work, windows of size 12 and 4 have been set for the data without and with weather, respectively.
+
 ### Validation Procedure
+
+Afterwords, in order to validate the results, a first thing to be done will be an analysis on the performance on the model, taking into account the time each model required to compile. This is important to understand what is the increase in demand of resources when using weather data.
+
+As aforementioned, a deep look into the loss curve is also be conducted, so one can check for overfitting and the training capacity of the model. The data has been split into training and testing, so no interference between what is supposed to be known and unkown happens. This factor also tends to avoid overfitting, or at least help one detect it. Moreover, a train-test split of 80% / 20% has been taken into consideration, so the last months of data from the year of 2019 have been used for testing.
+
+The main metric used for pixel-by-pixel erorr tracking is the Root Mean Squared Error (RMSE), which formula can be seen below:
+
+$RMSE = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}$
+
+where:
+
+\- $n$ is the number of samples in the dataset,
+
+\- $y_i$ represents the actual or observed value for the $i$-th sample,
+
+\- $\hat{y}_i$ represents the predicted value for the $i$-th sample,
+
+The RMSE is a common metric used to measure the average difference between predicted and actual values in regression problems. It quantifies the root mean squared deviation between the predicted values and the ground truth, providing a measure of the model's performance. It is commonly used for analysing the performance of regression models, including deep learning ones. Hence, it is useful for comparison methods as well.
+
+The RMSE will be evaluated as a mean for all forecasts, in an aggregated manner, but also per pixel and per unit of time and as a surface per unit of time and aggregated for all units of time. This separation shall allow for a deeper insights into spatial and temporal patterns in the errors, meaning that main targets, such as heteroscedasticity in spacetime can be thorough examined. Therefore, despite the RMSE, a qualitative observation of results is also done, checking whether errors present spatial depence, for instance. In case clear spatial or temporal patterns are present in errors, a clear insight into the learning capacities of the ConvLSTM about these features shall be present.
 
 ### Hardware and Reproducibility
 
+For computation comparison and reproducibility purposes, it is of extreme importance to detail what kind of hardware has been used for this work. This is especially relevant when considering the performance evaluations, for example. The main scripts have been developed in R programming language through a package that has been deployed in University of Münster High Performing Cluster (HPC) [PALMA](https://www.uni-muenster.de/IT/en/services/unterstuetzungsleistung/hpc/) . PALMA is a parallel Linux system with over 18000 processing cores, with access to multiple GPUs. The GPU used for this work was NVIDIA's TitanRTX2080 and overall 32GB RAM were requested. The processor of PALMA is Intel Xeon Gold 6140 18C \@ 2.30GHz (Skylake).
+
 ## Results & Discussion
 
-### Performance Analysis
+-   Performance comparison
 
-### Benchmarking
+-   RMSE (comparison to other works)
+
+-   Figure of errors
+
+-   RMSE aggreagted.. (comparison- better because it makes sense)
+
+-   time series plot
+
+-   Spatial patterns plot
 
 ## Conclusion
