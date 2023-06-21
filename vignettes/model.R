@@ -3,7 +3,7 @@ library(eoforecast)
 # dummy input tensor
 # x <- torch_rand(c(2, 4, 3, 16, 16)) # batch_size, seq_len, channels, height, width
 
-device <- torch_device(if(cuda_is_available()) {"cuda"}else{"cpu"})
+dev <- torch_device(if(cuda_is_available()) {"cuda"}else{"cpu"})
 
 ## Sanity Check
 # dl <- create_dummy_data()
@@ -13,7 +13,7 @@ device <- torch_device(if(cuda_is_available()) {"cuda"}else{"cpu"})
 cube <- create_dl_from_cube()
 
 # Quick Training for sanity check
-preds <- train_convlstm(cube, num_epochs = 6)
+preds <- train_convlstm(cube, num_epochs = 6, .device = dev)
 
 # Check Forecast
 round(as.matrix(preds[1, 1, 1:40, 1:91]), 2) %>% image() ## dim = 80 1 40 91

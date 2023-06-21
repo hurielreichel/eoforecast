@@ -156,7 +156,7 @@ train_convlstm <- function(dl,
                            hidden_dims = c(64, 1),
                            kernel_sizes = c(3, 3),
                            n_layers = 2,
-                           .device = device){
+                           .device){
 
   model <- convlstm(input_dim = input_dim, hidden_dims = hidden_dims, kernel_sizes = kernel_sizes, n_layers = n_layers)
   model <- model$to(device = .device)
@@ -165,6 +165,7 @@ train_convlstm <- function(dl,
   optimizer <- optim_adam(model$parameters)
 
   losses <- c()
+  train_losses <- c()
   ## Loop through Epochs
   cli::cli_progress_bar("Training convlstm", total = num_epochs)
   for (epoch in 1:num_epochs) {
@@ -172,7 +173,7 @@ train_convlstm <- function(dl,
     cli::cli_progress_update()
     model$train()
     batch_losses <- c()
-
+    batch_train_losses <- c()
     coro::loop(for (b in dl) {
 
       optimizer$zero_grad()
@@ -181,15 +182,25 @@ train_convlstm <- function(dl,
       preds <- model(b$x)[[2]][[2]][[1]]
 
       loss <- nnf_mse_loss(preds, b$y)
-      losses <- c(losses, as.numeric(loss))
-      cli::cli_alert(paste("Loss:", (loss %>% as.numeric() %>% round(3))))
+      batch_losses <- c(batch_losses, loss$item())
 
       loss$backward()
       optimizer$step()
 
-      train_losses <- c(train_losses, loss$item)
+      train_loss <- nnf_mse_loss(preds, b$y)
+      batch_train_losses <- c(batch_train_losses, train_loss$item())
 
     })
+
+    batch_losses[is.infinite(batch_losses)] <- NA
+    mean_loss <- mean(batch_losses, na.rm = TRUE)
+    losses <- c(losses, mean_loss)
+
+    batch_train_losses[is.infinite(batch_train_losses)] <- NA
+    train_mean_loss <- mean(batch_train_losses, na.rm = TRUE)
+    train_losses <- c(train_losses, train_mean_loss)
+
+    cli::cli_alert(paste("Epoch", epoch, "Loss:", round(mean_loss, 1)))
 
     # Early stopping
     if (epoch > 10){
@@ -207,10 +218,9 @@ train_convlstm <- function(dl,
 
   cli::cli_progress_done()
 
-  losses <- zoo::rollapply(losses, width = 3, FUN = mean, by = 3, align = "left", fill = NA) %>% na.omit()
-
   # create learning rate plot
   learning_curve <- tibble(epoch = 1:num_epochs, loss = losses) %>%
+    tidyr::pivot_longer(cols = -epoch, names_to = "name", values_to = "loss") %>%
     ggplot(aes(x = epoch, y = loss)) +
     geom_line() +
     xlab("Epochs") +
