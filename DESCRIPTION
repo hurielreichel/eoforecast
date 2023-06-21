@@ -9,4 +9,4 @@ Description: This package is the main source of my Master Thesis but it was also
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
-Depends: R (>= 4.1.0), cli, openeo, sf, stars, ggplot2, dplyr, tidyr, rnaturalearth, rnaturalearthhires, torch, zeallot, torchvision, coro, luz, raster, cubelyr, lubridate
+Depends: R (>= 4.1.0), cli, openeo, sf, stars, ggplot2, dplyr, tidyr, rnaturalearth, torch, zeallot, torchvision, coro, luz, raster, cubelyr, lubridate

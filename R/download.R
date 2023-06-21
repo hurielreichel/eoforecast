@@ -4,6 +4,7 @@ download_s5p_from_openeo <- function( country = NULL,
                                       n = NULL, e = NULL, s = NULL, w = NULL,
                                       output_path=".", con = connect(host = "https://openeo.cloud"), p = processes()){
 
+      library(rnaturalearthhires)
       # mask for cloud cover
       threshold_ = function(data, context) {
 
