@@ -58,7 +58,7 @@ The structure of the data cube is especially interesting for the purpose of fore
 
 #### Spacetime Deep Learning
 
-Given the high dimensionality and hence high complexity of the input data coming form spatial data cubes, one may be asking how can this level of level of multidimensionality be treated and maintaned with any model? This is possible within a deep learning framework, making use of deep neural networks.
+Given the high dimensionality and hence high complexity of the input data coming form spatial data cubes, one may be asking how can this level of level of multidimensionality be treated and maintained with any model? This is possible within a deep learning framework, making use of deep neural networks.
 
 Neural networks are computational models inspired by the structure and function of biological neural networks in the human brain (@wei2020). They consist of interconnected layers of artificial neurons, also known as nodes or units. Each neuron takes inputs, performs a computation, and produces an output that is transmitted to other neurons. Through a process called "training", neural networks learn to adjust the strengths of connections (weights) between neurons in order to approximate desired input-output mappings. Figure 3 demonstrates the neurons and weights that programmatically iterated to reach optimal results.
 
@@ -68,7 +68,7 @@ The exercise present in Figure 3 is that of an image classification. An input im
 
 The key advantage of neural networks in handling high-dimensional data lies in their capacity to learn intricate patterns and relationships within the data, capturing intrinsic abstractness in it, as seen in [@agirre-basurko2006; @masood2021; @pawul2016; @zhao2019]. By utilizing deep neural networks with multiple hidden layers, known as deep learning, these models can automatically extract hierarchical representations of features from the input data. This hierarchical representation allows neural networks to effectively capture complex dependencies and interactions between different dimensions, such as spatial, temporal, and covariable aspects of a spatial data cube.
 
-Here is where tensors come into play. A tensor is a mathematical object that can represent multi-dimensional arrays of data @panagakis2021. In the context of neural networks and spatial data cubes, tensors provide a natural framework for organizing and manipulating such high-dimensional data. A spatial data cube can be conceptualized as a tensor, with each dimension corresponding to a specific aspect of the data, such as spatial coordinates, time, and covariables. The elements of the tensor store the actual values of the data at each point in the cube. Neural networks process tensors as inputs, perform computations on them through various layers, and produce output tensors. The network's parameters, including weights and biases, are learned through training to optimize the model's performance on a given task, such as prediction or classification. A deeper notion of how data cubes can be interpreted as tensors is present in @mahoney2006 .
+Here is where tensors come into play. A tensor is a mathematical object that can represent multi-dimensional arrays of data @panagakis2021. In the context of neural networks and spatial data cubes, tensors provide a natural framework for organising and manipulating such high-dimensional data. A spatial data cube can be conceptualized as a tensor, with each dimension corresponding to a specific aspect of the data, such as spatial coordinates, time, and covariables. The elements of the tensor store the actual values of the data at each point in the cube. Neural networks process tensors as inputs, perform computations on them through various layers, and produce output tensors. The network's parameters, including weights and biases, are learned through training to optimize the model's performance on a given task, such as prediction or classification. A deeper notion of how data cubes can be interpreted as tensors is present in @mahoney2006 .
 
 To handle the computational demands of working with large-scale spatial data cubes, neural networks often require significant computational resources. Graphics Processing Units (GPUs) play a crucial role in accelerating neural network computations. GPUs excel at parallel processing, which allows them to perform many calculations simultaneously. This parallelism enables efficient processing of large amounts of data, making GPUs well-suited for training and inference tasks involved in handling big data.
 
@@ -154,7 +154,7 @@ The LSTM layers in the ConvLSTM model capture temporal dependencies in the input
 
 Moreover, During training, the ConvLSTM model optimises its parameters, including the weights and biases of the convolutional and LSTM layers, to minimize a predefined loss function. This loss function is measured and graphed and it strongly indicated the capacity of the model to learn with each epoch, *i.e.,* a complete iteration of the model through the whole dataset.
 
-The figure below, adapted from @hu2019feature, demostrates shortly how the ConvLSTM is built. The convolution layers are passed with their kernel sizes on each pixel of the input data, and after words with the same pixel in the following time layer (*t+1*). After that, the processes repeats itself and new weights are added to the nodes so loss can be diminished.
+The figure below, adapted from @hu2019feature, demonstrates shortly how the ConvLSTM is built. The convolution layers are passed with their kernel sizes on each pixel of the input data, and after words with the same pixel in the following time layer (*t+1*). After that, the processes repeats itself and new weights are added to the nodes so loss can be diminished.
 
 ![ConvLSTM structure demonstrating the convolution layers being passed to each pixel of the input data in current time and the next time reference. Two ConvLSTM layers are passed in total.](fig/convlstm.png){fig-align="center"}
 
@@ -168,7 +168,7 @@ Afterwords, in order to validate the results, a first thing to be done will be a
 
 As aforementioned, a deep look into the loss curve is also be conducted, so one can check for overfitting and the training capacity of the model. The data has been split into training and testing, so no interference between what is supposed to be known and unkown happens. This factor also tends to avoid overfitting, or at least help one detect it. Moreover, a train-test split of 80% / 20% has been taken into consideration, so the last months of data from the year of 2019 have been used for testing.
 
-The main metric used for pixel-by-pixel erorr tracking is the Root Mean Squared Error (RMSE), which formula can be seen below:
+The main metric used for pixel-by-pixel error tracking is the Root Mean Squared Error (RMSE), which formula can be seen below:
 
 $RMSE = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}$
 
@@ -182,7 +182,7 @@ where:
 
 The RMSE is a common metric used to measure the average difference between predicted and actual values in regression problems. It quantifies the root mean squared deviation between the predicted values and the ground truth, providing a measure of the model's performance. It is commonly used for analysing the performance of regression models, including deep learning ones. Hence, it is useful for comparison methods as well.
 
-The RMSE will be evaluated as a mean for all forecasts, in an aggregated manner, but also per pixel and per unit of time and as a surface per unit of time and aggregated for all units of time. This separation shall allow for a deeper insights into spatial and temporal patterns in the errors, meaning that main targets, such as heteroscedasticity in spacetime can be thorough examined. Therefore, despite the RMSE, a qualitative observation of results is also done, checking whether errors present spatial depence, for instance. In case clear spatial or temporal patterns are present in errors, a clear insight into the learning capacities of the ConvLSTM about these features shall be present.
+The RMSE will be evaluated as a mean for all forecasts, in an aggregated manner, but also per pixel and per unit of time and as a surface per unit of time and aggregated for all units of time. This separation shall allow for a deeper insights into spatial and temporal patterns in the errors, meaning that main targets, such as heteroscedasticity in spacetime can be thorough examined. Therefore, despite the RMSE, a qualitative observation of results is also done, checking whether errors present spatial dependence, for instance. In case clear spatial or temporal patterns are present in errors, a clear insight into the learning capacities of the ConvLSTM about these features shall be present.
 
 ### Hardware and Reproducibility
 

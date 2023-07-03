@@ -5,11 +5,10 @@ sudo apt install libsodium-dev
 
 ```
 srun -p gpu2080 --mem=40G --cpus-per-task=4 --gres=gpu:1 --time=1:00:00 --pty bash
-module purge
-module load palma/2021a
-module load GCC/10.3.0
-module load OpenMPI/4.1.1
-module load R/4.1.0
+ml purge
+ml load palma/2022a
+ml load foss/20224
+module load R/4.2.1
 
 #conda create --prefix ~/envs/__luz__ r-base
 #CONDA_BASE=$(conda info --base)

@@ -1,0 +1,94 @@
+---
+title: "NO2 Forecasting using Sentinel 5P and Weather Forecast data: "
+subtitle: "a Deep Learning Approach"
+author: "Huriel Reichel"
+institute: "University of Münster"
+logo: "fig/logo.jpg"
+footer: "[https://github.com/hurielreichel/eoforecast](github.com/hurielreichel/eoforecast)"
+progress: TRUE
+format: revealjs
+editor: visual
+bibliography: "references.bib"
+---
+
+## Introduction
+
+### The Problem
+
+-   Nitrogen dioxide ($NO_2$ ) is a greenhouse gas strongly related to respiratory diseases
+
+-   Common Reference for Pollution - That's why forecast!
+
+-   Time-Series Approaches and Physical Models
+
+-   Deep Learning can be an interesting solution
+
+## Introduction
+
+### The approach
+
+-   Depending on the architecture, forecasts can compute both temporal and spatial patterns
+
+-   ConvLSTM
+
+## Introduction
+
+### What else?
+
+-   Multivariate model: include weather related variables
+
+-   Analyse the spatial patterns in responses
+
+-   Do forecasts present the same spatio structure as the data before?
+
+-   Do they present heteroscedasticity throughout their surface?
+
+-   Is there a trend in future forecast in terms of space and time?
+
+## Introduction
+
+### Objectives
+
+-   Use of a ConvLSTM to forecast $NO_2$ with the aid of weather covariables
+
+-   Comparison of a ConvLSTM trained with weather covariables and another without in terms of accuracy and spatiotemporal heteroscedasticity
+
+### Research Questions
+
+-   To what extent can one make use of a ConvLSTM neural network to forecast daily $NO_2$ levels with SENTINEL 5P Imagery and weather related covariables?
+
+-   How does a ConvLSTM neural network using SENTINEL 5P and weather data performs compared to the same model without weather covariables, and how does the accuracy decay behaves when trying to predict further in time ?
+
+## Methodology
+
+### Overview
+
+![An overview of the Methodology](fig/methods.png){fig-align="center"}
+
+## Methodology
+
+### Further Analysis
+
+-   Model Performance
+
+-   Learning Curve
+
+-   Train-Test Splitting (80/20%) - RMSE
+
+-   Error in temporal perspective
+
+-   Error in spatial perspective
+
+## Results
+
+#### Performance
+
+-   Weather:
+
+-   No-weather:
+
+#### Learning Curve
+
+#### Error
+
+## References

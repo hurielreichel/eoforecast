@@ -96,7 +96,7 @@ download_s5p_from_openeo <- function( country = NULL,
     cli::cli_rule();cli::cli_end()
 }
 
-create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", batch_size = 100, train_pct = 0.8, seq_len = 12, device = device) {
+create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", batch_size = 100, train_pct = 0.8, seq_len = 12, device) {
 
   # Get all the file paths in the directory
   file_paths <- list.files(path = path_to_tiffs, pattern = "*\\.tif$", full.names = TRUE)
@@ -144,7 +144,7 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
 
   full_size <- dim(cube_tensor)[2]
 
-  dummy_ds <- dataset(
+  create_train_ds <- dataset(
 
     initialize = function(data) {
       self$data <- data
@@ -160,11 +160,30 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
   )
 
   # Create dataloaders from the datasets
-  train_ds <- dummy_ds(cube_tensor)
+  train_ds <- create_train_ds(cube_tensor)
   train_dl <- dataloader(train_ds, batch_size = batch_size, shuffle = FALSE)
 
-  cli_alert_info(paste("Validation Set start at", train_size+1))
-  return(train_dl)
+  create_val_ds <- dataset(
+
+    initialize = function(data) {
+      self$data <- data
+    },
+
+    .getitem = function(i) {
+      list(x = self$data[i, train_size:full_size, ..], y = self$data[i, seq_len, ..])
+    },
+
+    .length = function() {
+      nrow(self$data)
+    }
+  )
+
+  val_ds <- create_val_ds(cube_tensor)
+  val_dl <- dataloader(val_ds, batch_size = batch_size, shuffle = FALSE)
+
+
+  cli_alert_info(paste("Dataloader created with train-test-split", train_size+1))
+  return(list(train_dl, val_dl))
 }
 
 

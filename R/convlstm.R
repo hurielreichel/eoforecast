@@ -144,37 +144,93 @@ convlstm <- nn_module(
     }
 
     list(layer_output_list, layer_state_list)
+    # self$net()
+
   }
 
 )
 
 ## Tiny convlstm
-train_convlstm <- function(dl,
+train_convlstm <- function(train_dl,
+                           val_dl,
                            num_epochs = 100,
                            plot_path = "vignettes/learning_curve.png",
                            input_dim = 1,
                            hidden_dims = c(64, 1),
                            kernel_sizes = c(3, 3),
                            n_layers = 2,
+                           lr = 0.001,
                            .device){
+
+  # model <- convlstm %>%
+  #   setup(
+  #     loss = nn_mse_loss(),
+  #     optimizer = torch::optim_adam,
+  #     ) %>%
+  #   set_hparams(n_layers = n_layers,
+  #               input_dim = input_dim,
+  #               hidden_dims = hidden_dims,
+  #               kernel_sizes = kernel_sizes)
+  #
+  #
+  # rates_and_losses <- model %>% lr_finder(
+  #   train_dl,
+  #   # start_lr = 1e-4,
+  #   # end_lr = 0.5,
+  #   verbose = TRUE
+  # )
+  #
+  # rates_and_losses %>% plot()
+
+  # model %>% fit(train_dl, epochs = 100, valid_data = val_dl,
+  #     callbacks = list(
+  #       luz_callback_early_stopping(patience = 3),
+  #       luz_callback_lr_scheduler(
+  #         lr_one_cycle,
+  #         max_lr = 0.01,
+  #         epochs = 100,
+  #         steps_per_epoch = length(train_dl),
+  #         call_on = "on_batch_end")
+  #     ),
+  #     verbose = TRUE)
+  #
+    # lr_profiler <- luz_callback_record_lr(steps, verbose)
+
+  #   fitted <- object %>%
+  #     set_opt_hparams(lr = start_lr) %>%
+  #     fit(...,
+  #         data = data,
+  #         epochs = 999999, # the callback will be responsible for interrupting
+  #         callbacks = list(scheduler, lr_profiler),
+  #         verbose = FALSE
+  #     )
+  #
+  #   lr_records <- data.frame(sapply(fitted$records$lr_finder, as.numeric))
+  #
+  #   class(lr_records) <- c("lr_records", class(lr_records))
+  #   lr_records
+  # }
 
   model <- convlstm(input_dim = input_dim, hidden_dims = hidden_dims, kernel_sizes = kernel_sizes, n_layers = n_layers)
   model <- model$to(device = .device)
 
   ### Adam optimizer
-  optimizer <- optim_adam(model$parameters)
+  optimizer <- optim_adam(model$parameters, lr = lr)
 
-  losses <- c()
-  train_losses <- c()
+  trn_loss <- c()
+  val_loss <- c()
+  epc <- c()
   ## Loop through Epochs
   cli::cli_progress_bar("Training convlstm", total = num_epochs)
   for (epoch in 1:num_epochs) {
 
+    cli::cli_bullets(paste("Epoch:", epoch))
+    cli::cli_rule()
+
     cli::cli_progress_update()
     model$train()
     batch_losses <- c()
-    batch_train_losses <- c()
-    coro::loop(for (b in dl) {
+    coro::loop(for (b in train_dl) {
 
       optimizer$zero_grad()
 
@@ -182,52 +238,131 @@ train_convlstm <- function(dl,
       preds <- model(b$x)[[2]][[2]][[1]]
 
       loss <- nnf_mse_loss(preds, b$y)
-      batch_losses <- c(batch_losses, loss$item())
+      cli::cli_alert_info(paste("Training:", loss$item(), "\n"))
 
+      batch_losses <- c(batch_losses, ifelse(is.infinite(loss$item()), NA, loss$item()))
+
+      ### -------- Backpropagation --------
       loss$backward()
+      ### -------- Update weights --------
       optimizer$step()
-
-      train_loss <- nnf_mse_loss(preds, b$y)
-      batch_train_losses <- c(batch_train_losses, train_loss$item())
 
     })
 
-    batch_losses[is.infinite(batch_losses)] <- NA
-    mean_loss <- mean(batch_losses, na.rm = TRUE)
-    losses <- c(losses, mean_loss)
 
-    batch_train_losses[is.infinite(batch_train_losses)] <- NA
-    train_mean_loss <- mean(batch_train_losses, na.rm = TRUE)
-    train_losses <- c(train_losses, train_mean_loss)
+    # Print Loss
+    if (epoch %% 10 == 0){
+      cat(sprintf("\nEpoch %d, training loss:%3f\n", epoch, mean(batch_losses, na.rm = T)))
+      trn_loss <- c(trn_loss, mean(batch_losses, na.rm = T))
+      epc <- c(epc, epoch)
 
-    cli::cli_alert(paste("Epoch", epoch, "Loss:", round(mean_loss, 1)))
-
-    # Early stopping
-    if (epoch > 10){
-      if (losses[epoch] >= losses[1]){
+      # Early stopping
+      if (trn_loss[epoch] >= trn_loss[1]){
         stop(cli::cli_abort("Early Stopping triggered"))
       }
     }
 
-    if (epoch %% 10 == 0)
-      cat(sprintf("\nEpoch %d, training loss:%3f\n", epoch, mean(batch_losses, na.rm = T)))
-
     model$eval()
+    batch_losses <- c()
+
+    # disable gradient tracking to reduce memory usage
+    with_no_grad({
+      coro::loop(for (b in val_dl) {
+
+        # last-time-step output from last layer
+        preds <- model(b$x)[[2]][[2]][[1]]
+
+        loss <- nnf_mse_loss(preds, b$y)
+        cli::cli_alert_info(paste("Validation:", loss$item(), "\n"))
+        batch_losses <- c(batch_losses, ifelse(is.infinite(loss$item()), NA, loss$item()))
+      })
+    })
+
+    # Print Loss
+    if (epoch %% 10 == 0){
+      cat(sprintf("\nEpoch %d, validation loss:%3f\n", epoch, mean(batch_losses, na.rm = T)))
+      val_loss <- c(val_loss, mean(batch_losses, na.rm = T))
+    }
 
   }
 
   cli::cli_progress_done()
 
   # create learning rate plot
-  learning_curve <- tibble(epoch = 1:num_epochs, loss = losses) %>%
-    tidyr::pivot_longer(cols = -epoch, names_to = "name", values_to = "loss") %>%
-    ggplot(aes(x = epoch, y = loss)) +
+  learning_curve <- tibble(epoch = epc, train_loss = trn_loss, validation_loss = val_loss) %>%
+    tidyr::pivot_longer(cols = -epoch, names_to = "Dataset", values_to = "value") %>%
+    ggplot(aes(x = epoch, y = value, col = Dataset)) +
     geom_line() +
-    xlab("Epochs") +
+    xlab("Epoch") +
     ylab("Loss") +
-    ggtitle("Learning Rate Curve")
+    ggtitle("LOss Curve")
   ggsave(plot_path, learning_curve)
 
   return(preds)
 
 }
+
+find_lr <- function(
+                    train_dl,
+                    plot_path = "vignettes/lr.png",
+                    input_dim = 1,
+                    hidden_dims = c(64, 1),
+                    kernel_sizes = c(3, 3),
+                    n_layers = 2,
+                    .device,
+                    min_lr = 0.0000001,
+                    max_lr = 0.1,
+                    steps = 5,
+                    num_epochs = 4){
+
+  model <- convlstm(input_dim = input_dim, hidden_dims = hidden_dims, kernel_sizes = kernel_sizes, n_layers = n_layers)
+  model <- model$to(device = .device)
+
+  Loss <- c()
+  Learning_Rate <- c()
+
+  lrs <- seq(min_lr, max_lr, length.out = steps)
+  ## Loop through lrs
+  for (i in lrs) {
+    for (epoch in 1:num_epochs) {
+
+      model$train()
+      batch_losses <- c()
+      coro::loop(for (b in train_dl) {
+
+        optimizer <- optim_adam(model$parameters, lr = i)
+        optimizer$zero_grad()
+
+        # last-time-step output from last layer
+        preds <- model(b$x)[[2]][[2]][[1]]
+
+        loss <- nnf_mse_loss(preds, b$y)
+
+        batch_losses <- c(batch_losses, ifelse(is.infinite(loss$item()), NA, loss$item()))
+
+        ### -------- Backpropagation --------
+        loss$backward()
+        ### -------- Update weights --------
+        optimizer$step()
+
+      })
+
+    }
+
+    Loss <- c(Loss, mean(batch_losses, na.rm = T))
+    Learning_Rate <- c(Learning_Rate, i)
+    cli::cli_alert_info(paste("Learning Rate:", i, "Loss:", mean(batch_losses, na.rm = T), "\n"))
+    gc()
+
+    }
+
+  lr_loss <- tibble(Loss, Learning_Rate) %>%
+    filter(!is.infinite(Loss)) %>%
+    ggplot(aes(x = Learning_Rate, y = Loss)) +
+    geom_line() +
+    ggtitle("Learning Rate Curve")
+  ggsave(plot_path, lr_loss)
+
+}
+
+
