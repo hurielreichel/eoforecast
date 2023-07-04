@@ -96,13 +96,13 @@ download_s5p_from_openeo <- function( country = NULL,
     cli::cli_rule();cli::cli_end()
 }
 
-create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", batch_size = 100, train_pct = 0.8, seq_len = 12, device) {
+create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", batch_size = 117, seq_len = 6, device) {
 
   # Get all the file paths in the directory
   file_paths <- list.files(path = path_to_tiffs, pattern = "*\\.tif$", full.names = TRUE)
 
   # Read the files and combine into a single array
-  cube_array <- array(0, dim = c(length(file_paths), 1, nrow(raster::raster(file_paths[[1]])), ncol(raster::raster(file_paths[[1]]))))
+  cube_array <- array(0, dim = c(length(file_paths), 1, ncol(raster::raster(file_paths[[1]])), nrow(raster::raster(file_paths[[1]]))))
   for (i in seq_along(file_paths)) {
     cube_array[i,,,] <- raster(file_paths[[i]])[]
   }
@@ -110,7 +110,7 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
   # Create sequence tensor
   cube_array_seq <- array(0, dim = c(dim(cube_array)[1] - seq_len + 1, seq_len, dim(cube_array)[2], dim(cube_array)[3], dim(cube_array)[4]))
   for (i in 1:(dim(cube_array)[1] - seq_len + 1)) {
-    cube_array_seq[i, , , ,] <- cube_array[i:(i + seq_len - 1), , , ]
+    cube_array_seq[i, , , ,] <- cube_array[i:(i + seq_len - 1), , ,]
   }
 
   rm(cube_array)
@@ -119,6 +119,18 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
   # Replace NAs and NaNs with 0
   cube_array_seq[is.na(cube_array_seq)] <- 0
   cube_array_seq[is.nan(cube_array_seq)] <- 0
+  cube_array_seq[cube_array_seq<0] <- 0
+  cube_array_seq[cube_array_seq>100] <- 0 # rough outlier removal
+
+  # Calculate minimum and maximum values
+  min_val <- min(cube_array_seq, na.rm = TRUE)
+  max_val <- max(cube_array_seq, na.rm = TRUE)
+
+  # Shift the values to have a minimum of 0
+  shifted_array <- cube_array_seq - min_val
+
+  # Scale the values between 0 and 1
+  cube_array_seq <- shifted_array / (max_val - min_val)
 
   # convert to tensor
   cube_tensor <- torch_tensor(cube_array_seq, dtype = torch_float())
@@ -138,11 +150,11 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
   #   scale_fill_gradient(low = "white", high = "red")
 
   # Split into training and validation sets
-  train_size <- floor(seq_len * train_pct)
   # train_data <- cube_tensor[1:train_size, , , , ]
   # val_data <- cube_tensor[(train_size+1):dim(cube_tensor)[1], , , , ]
 
-  full_size <- dim(cube_tensor)[2]
+  max_trn <- seq_len - 2
+  min_val <- seq_len - 1
 
   create_train_ds <- dataset(
 
@@ -151,7 +163,7 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
     },
 
     .getitem = function(i) {
-      list(x = self$data[i, 1:train_size, ..], y = self$data[i, seq_len, ..])
+      list(x = self$data[i, 1:max_trn, ..], y = self$data[i, min_val, ..])
     },
 
     .length = function() {
@@ -170,7 +182,7 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
     },
 
     .getitem = function(i) {
-      list(x = self$data[i, train_size:full_size, ..], y = self$data[i, seq_len, ..])
+      list(x = self$data[i, max_trn:min_val, ..], y = self$data[i, seq_len, ..])
     },
 
     .length = function() {
@@ -181,8 +193,6 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
   val_ds <- create_val_ds(cube_tensor)
   val_dl <- dataloader(val_ds, batch_size = batch_size, shuffle = FALSE)
 
-
-  cli_alert_info(paste("Dataloader created with train-test-split", train_size+1))
   return(list(train_dl, val_dl))
 }
 

@@ -7,10 +7,14 @@ dev <- torch_device(if(cuda_is_available()) {"cuda"}else{"cpu"})
 
 ## Sanity Check
 # dl <- create_dummy_data()
-# preds <- train_convlstm(train_dl = dl, val_dl = dl, 100, plot_path = "vignettes/learning_curve-sanity.png", .device = dev)
+# preds <- train_convlstm(train_dl = dl, val_dl = dl, 100, plot_path = "vignettes/learning_curve-sanity.png", .device = dev,
+#                         input_dim = 1,
+#                         hidden_dims = c(5, 5, 1),
+#                         kernel_sizes = c(3, 3, 3),
+#                         n_layers = 3)
 
 ## Wrangle Cube to tensor
-cube <- create_dl_from_cube(seq_len = 6, batch_size = 117)
+cube <- create_dl_from_cube(seq_len = 6, batch_size = 100)
 
 ## Find Optimal Learning Rate
 cube[[1]] %>% find_lr(.device = dev,
@@ -23,8 +27,15 @@ cube[[1]] %>% find_lr(.device = dev,
                       steps = 10,
                       num_epochs = 3)
 
+gc()
+
 # Quick Training for sanity check
-preds <- train_convlstm(cube[[1]], cube[[2]], num_epochs = 20, .device = dev, lr = 0.00001)
+preds <- train_convlstm(cube[[1]], cube[[2]], num_epochs = 4, .device = dev,
+                        lr = 0.001,
+                        input_dim = 1,
+                        hidden_dims = c(64, 1),
+                        kernel_sizes = c(5, 5),
+                        n_layers = 2)
 
 # Check Forecast
 round(as.matrix(preds[50, 1, 1:40, 1:91]), 2) %>% image() ## dim = 80 1 40 91

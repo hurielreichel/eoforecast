@@ -94,7 +94,10 @@ convlstm <- nn_module(
   # we always assume batch-first
   forward = function(x) {
 
-    c(batch_size, seq_len, num_channels, height, width) %<-% x$size()
+    batch_size <- x$size()[1]
+    seq_len <- x$size()[2]
+    height <- x$size()[4]
+    width <- x$size()[5]
 
     # initialize hidden states
     init_hidden <- vector(mode = "list", length = self$n_layers)
@@ -116,20 +119,24 @@ convlstm <- nn_module(
     for (i in 1:self$n_layers) {
 
       # every layer's hidden state starts from 0 (non-stateful)
-      c(h, c) %<-% hidden_states[[i]]
+      h_c <- hidden_states[[i]]
+      h <- h_c[[1]]
+      c <- h_c[[2]]
       # outputs, of length seq_len, for this layer
       # equivalently, list of h states for each time step
       output_sequence <- vector(mode = "list", length = seq_len)
 
-      # loop over time steps
+      # loop over timesteps
       for (t in 1:seq_len) {
-        c(h, c) %<-% self$cell_list[[i]](cur_layer_input[ , t, , , ], list(h, c))
-        # keep track of output (h) for every time step
+        h_c <- self$cell_list[[i]](cur_layer_input[ , t, , , ], list(h, c))
+        h <- h_c[[1]]
+        c <- h_c[[2]]
+        # keep track of output (h) for every timestep
         # h has dim (batch_size, hidden_size, height, width)
         output_sequence[[t]] <- h
       }
 
-      # stack hs for all time steps over seq_len dimension
+      # stack hs for all timesteps over seq_len dimension
       # stacked_outputs has dim (batch_size, seq_len, hidden_size, height, width)
       # same as input to forward (x)
       stacked_outputs <- torch_stack(output_sequence, dim = 2)
@@ -144,7 +151,6 @@ convlstm <- nn_module(
     }
 
     list(layer_output_list, layer_state_list)
-    # self$net()
 
   }
 
@@ -155,10 +161,10 @@ train_convlstm <- function(train_dl,
                            val_dl,
                            num_epochs = 100,
                            plot_path = "vignettes/learning_curve.png",
-                           input_dim = 1,
-                           hidden_dims = c(64, 1),
-                           kernel_sizes = c(3, 3),
-                           n_layers = 2,
+                           input_dim = 3,
+                           hidden_dims = c(5, 5, 1),
+                           kernel_sizes = c(3, 3, 3),
+                           n_layers = 3,
                            lr = 0.001,
                            .device){
 
@@ -224,7 +230,7 @@ train_convlstm <- function(train_dl,
   cli::cli_progress_bar("Training convlstm", total = num_epochs)
   for (epoch in 1:num_epochs) {
 
-    cli::cli_bullets(paste("Epoch:", epoch))
+    cli::cli_bullets(paste("\nEpoch:", epoch))
     cli::cli_rule()
 
     cli::cli_progress_update()
@@ -236,6 +242,13 @@ train_convlstm <- function(train_dl,
 
       # last-time-step output from last layer
       preds <- model(b$x)[[2]][[2]][[1]]
+
+      # round(as.matrix(preds[1, 1, 1:91, 40:1]), 2) %>% image(main = "Prediction")
+      # Sys.sleep(2)
+      # round(as.matrix(b$y[1, 1, 1:91, 40:1]), 2) %>% image(main = "Validation")
+      # Sys.sleep(2)
+      # (round(as.matrix(preds[1, 1, 1:91, 40:1]), 2) - round(as.matrix(b$y[1, 1, 1:91, 40:1]), 2)) %>%
+      #   image(main = "Error")
 
       loss <- nnf_mse_loss(preds, b$y)
       cli::cli_alert_info(paste("Training:", loss$item(), "\n"))
@@ -256,10 +269,15 @@ train_convlstm <- function(train_dl,
       trn_loss <- c(trn_loss, mean(batch_losses, na.rm = T))
       epc <- c(epc, epoch)
 
-      # Early stopping
-      if (trn_loss[epoch] >= trn_loss[1]){
-        stop(cli::cli_abort("Early Stopping triggered"))
-      }
+      # # Early stopping
+      try(print(trn_loss[epoch - 40]))
+      # if (epoch >= 50 && mean(batch_losses, na.rm = TRUE) >= trn_loss[epoch - 40]) {
+      #   cat("Validation loss did not improve. Early stopping...\n")
+      #   break  # Stop training
+      # } else {
+      #   val_loss <- c(val_loss, mean(batch_losses, na.rm = TRUE))
+      # }
+
     }
 
     model$eval()
@@ -288,15 +306,20 @@ train_convlstm <- function(train_dl,
 
   cli::cli_progress_done()
 
-  # create learning rate plot
-  learning_curve <- tibble(epoch = epc, train_loss = trn_loss, validation_loss = val_loss) %>%
-    tidyr::pivot_longer(cols = -epoch, names_to = "Dataset", values_to = "value") %>%
-    ggplot(aes(x = epoch, y = value, col = Dataset)) +
-    geom_line() +
-    xlab("Epoch") +
-    ylab("Loss") +
-    ggtitle("LOss Curve")
-  ggsave(plot_path, learning_curve)
+  if (num_epochs >= 20){
+    # create learning rate plot
+    learning_curve <- tibble(epoch = epc, train_loss = trn_loss, validation_loss = val_loss) %>%
+      tidyr::pivot_longer(cols = -epoch, names_to = "Dataset", values_to = "value") %>%
+      ggplot(aes(x = epoch, y = value, col = Dataset)) +
+      geom_line() +
+      xlab("Epoch") +
+      ylab("Loss") +
+      ggtitle("LOss Curve")
+    ggsave(plot_path, learning_curve)
+
+  } else{
+    cli::cli_alert_warning("No plotting, as num_epochs needs to be >= 20")
+  }
 
   return(preds)
 
