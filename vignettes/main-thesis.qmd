@@ -4,6 +4,8 @@ author: "Huriel Reichel"
 format: pdf
 editor: visual
 bibliography: references.bib
+execute:
+  echo: false
 ---
 
 ## Introduction
@@ -120,6 +122,8 @@ The methodology started with SENTINEL 5P data acquisition and wrangling. This wa
 
 As a matter of fact, cloud remain to be a challenge in almost any remote sensing task. This operation in openEO allows for a trustworthy, but also straightforward approach. Nevertheless, the flag for the cloud cover removal remains open when dealing with SentinelHub data through openEO. This value roughly defines what should or not be considered a cloud in the image. As ESA recommends the use of 0.5 as a value, this has been used. As for the interpolation, a linear interpolation method has been applied.
 
+It is relevant to mention that after the wrangling processed through the *openeo* package @openeo, a local cleaning has also been made. The S5P data as found in Sentinel Hub present a considerable level of what is called *Pepper and Salt.* This effect refers to the lack of smoothness in Earth observation data, with outliers breaking the general patterns in images. For that reason, a blurring algorithm has also been applied to the data in order to smooth out these outliers and create a cleaner and probably more realistic surface to forecast.
+
 The chosen area of study is Switzerland, and the vector of the country boundaries had been used as reference for the bounding boxes of the download from openEO. Data from the whole year of 2019 have been used for analysis. For reproducible purposes, inside the R programming language package built for the purpose of this research, the functions use to [download the data from openEO](https://github.com/hurielreichel/eoforecast/blob/master/R/download.R) and to wrangle them into a tensor for further learning are, respectively, `download_s5p_from_openeo` and `create_dl_from_cube`.
 
 ### ERA5 Data Acquisition through ECWMF
@@ -156,11 +160,11 @@ Moreover, During training, the ConvLSTM model optimises its parameters, includin
 
 The figure below, adapted from @hu2019feature, demonstrates shortly how the ConvLSTM is built. The convolution layers are passed with their kernel sizes on each pixel of the input data, and after words with the same pixel in the following time layer (*t+1*). After that, the processes repeats itself and new weights are added to the nodes so loss can be diminished.
 
-![ConvLSTM structure demonstrating the convolution layers being passed to each pixel of the input data in current time and the next time reference. Two ConvLSTM layers are passed in total.](fig/convlstm.png){fig-align="center"}
+![ConvLSTM structure demonstrating the convolution layers being passed to each pixel of the input data in current time and the next time reference. Two ConvLSTM layers are passed in total.](fig/convlstm.png){fig-align="center" width="500"}
 
-Finally, an important aspect of dealing with temporal models are windows. Windows, in this case, are temporal segmentations of the data, which each segment represents a contiguous sequence of consecutive time steps from the input data. Those are relevant in temporal models as it allows for capturing temporal dependencies and patterns in sequential data. The process of breaking the time series into windows enhances the granularity of the model, and thus support some sort of indirect seasonality and trend extraction from the data @chatfield2000time.
+After that, an important aspect of dealing with temporal models are windows. Windows, in this case, are temporal segmentations of the data, which each segment represents a contiguous sequence of consecutive time steps from the input data. Those are relevant in temporal models as it allows for capturing temporal dependencies and patterns in sequential data. The process of breaking the time series into windows enhances the granularity of the model, and thus support some sort of indirect seasonality and trend extraction from the data @chatfield2000time. A problem with windows is that they are RAM demanding, and a reasonable number in those terms must be set. For this work, a window of size 30 days have been set for the data without and with weather.
 
-A problem with windows is that they are RAM demanding, and a reasonable number in those terms must be set. For this work, windows of size 12 and 4 have been set for the data without and with weather, respectively.
+Finally, when developing the hyperparameter tuning, *i.e.,* setting the parameters of the model that will be bring the most optimal outcome, one of those that is exceptionaly calibrated through a more specific manner other than testing is the leraning rate. The learning rate defines the size of the steps, at which the optimisation algorithm updates the model's parameters during training @smith2017 . The choice of the learning rate is usually done by comparing it to the loss when traning the model shortly for only one or two epochs. This procedure was also done and the final result used for the actual model training.
 
 ### Validation Procedure
 
@@ -186,20 +190,129 @@ The RMSE will be evaluated as a mean for all forecasts, in an aggregated manner,
 
 ### Hardware and Reproducibility
 
-For computation comparison and reproducibility purposes, it is of extreme importance to detail what kind of hardware has been used for this work. This is especially relevant when considering the performance evaluations, for example. The main scripts have been developed in R programming language through a package that has been deployed in University of Münster High Performing Cluster (HPC) [PALMA](https://www.uni-muenster.de/IT/en/services/unterstuetzungsleistung/hpc/) . PALMA is a parallel Linux system with over 18000 processing cores, with access to multiple GPUs. The GPU used for this work was NVIDIA's TitanRTX2080 and overall 32GB RAM were requested. The processor of PALMA is Intel Xeon Gold 6140 18C \@ 2.30GHz (Skylake).
+For computation comparison and reproducibility purposes, it is of importance to detail what kind of hardware has been used for this work. This is especially relevant when considering the performance evaluations, for example. The main scripts have been developed in R programming language through a package that has been deployed in a Linux PC with 40 gb RAM and 4 cores with an intel i7 10th generation processor. A GPU was planned to be used, but at the end, CPU was capable of handling computations, as comparison was still feasible.
 
 ## Results & Discussion
 
--   Performance comparison
+All code developed for the this work have been made inserted into an R package. This allows for full reproducibility and also relative easiness in applying the same model to different data in the future. The package is available in [GitHub](github.com/hurielreichel/eoforecast) freely, just as the data.
+
+First of all, data from S5P with $NO_2$ layer has been obtained through the `openeo` package in R, where cloud cover removal and interpolation were also made. A further cleaning process has been made through a blurring algorithm from the `spatstat` package @spatstat. This was especially relevant to avoid a "Salt-and-Pepper" effect and having over-detailed imagery for model training. An example of this de-blurring can be seen in the figure below.
+
+![Demonstration of the blur effect applied to the S5P before the model training process. As one can see, the main spatial pattern is maintained and missing data is also roughly eliminated.](fig/blurred.png){fig-align="center"}
+
+One can observe that the overall spatial pattern of the $NO_2$ plume is kept, especially to what concerns local maximums and minimums and the outliers are completely wiped out of the image. More that that, areas where even the interpolation could not fill due to cloud cover were finally smoothed in a similar way. In general, the objective of smoothing out the data was obtained and that proved relevant for a reasonable loss decay once the model was training.
+
+The development of the ConvLSTM Network was followed by the adaptation of past work, and several testing drills. The main challenge in setting up the neural network has been on the data alignment and structuring. Having it in the correct format as input for the model and finally the output can come as a simple challenge, although this was definitely not the case. When handling images and having them converted to high dimensional matrices, many issues showed up in the path. Even for a rather shallow neural network, the data wrangling and testing of the training given different hyperparameters was the most time demanding task, therefore not to be underestimated. Still on the training, some steps are considerably important and dealt with in the following.
+
+### Learning Rate
+
+Once data was was its expected format, the learning rate curve was computed so one could identify an optimal value for it. In the following, once can verify that an approximate optimal learning rate of around 0.01 was found, as this refers to the area in the x-axis where the loss is the most stable and the lowest at the same time. Hence the value of 0.01 was used for model training and prediction.
+
+![Learning Rate Curve which allowed to identify the optimal learning rate value of 0.01](fig/lr.png){fig-align="center"}
+
+Nevertheless, once the model was tested with different parameters and finally demonstrated reasonable results, it was time to download the weather data from ECMWF. As mentioned once before, the download of the weather data was done in the website of ECMWF. The images were translated into matrices with the main aid of the `stars` package @stars, where they were also *warped* to fit the dimensions of the S5P data. They were converted into a single variable to ease computation and a higher dimensional matrix was set to be in-putted into the ConvLSTM neural network. As the model was already coherently developed and tested with the S5P data, almost no adaptation was required in this step regarding the neural network.
+
+### Loss decay & Performance
+
+In order to have a deeper look into the learning process of the ConvLSTM, the loss curve of the model trained without weather data and with weather data can be seen below.
+
+::: {#fig-loss}
+\![Loss curve without weather data\](fig/learning-curve-no-weather.png)
+
+\![Loss curve with weather data\](fig/learning-curve-weather-data.png)
+
+Loss curve of model without and with weather data
+:::
+
+As one can see, the loss decays smoothly until reaching an asymptote, just as expected from a well trained deep learning model. Other than that, the smoothness is considerably different between the two models. The model without weather data presents a considerably smoother loss curve than the model trained with weather data. This could represent a stronger difficulty in training when having a higher dimensional array, but also a the possibility that an even more specific tuning was required. At the end, the curve was still decaying and it also reach a low asymptote, and our validation metric and the other methods that should evaluate how helpful the weather really was in forecasting pollution.
+
+Moreover, 200 epochs were used and a slight difference in training time was noticed. Whilst training the model without weather data took approximately 48 min, the model with weather data required no more than one hour to complete. It is important to mention that this difference could be due to background processes interacting with the CPU and the RAM. Nevertheless, one can roughly say the training is rather more time-demanding when using higher-dimensional data, but not to the point it would turn it into a relevant drawback.
+
+### Validation
+
+The validation process was followed given the attention to the RMSE metric, but also the main point of spatial and temporal heteroscedasticity. When ignoring the weather data, an RMSE of 0.033 was found, *i.e.,* the accuracy was around 97% among the total of all timestamps forecasted (seven days), given that the data was scaled from zero to one. The obtained results are relatively comparable to those presented by @wen2019 and @10.5555/2969239.2969329 given into account the different units and also even targets. The loss obtained was of 0.0018 in the end, which will then be compared to the loss of model trained with weather data.
+
+The histogram below, demonstrates the RMSEs obatined for the seven prediction made, which shall give a clue about how spread the errors were. One can observe that the errors roughly show a normal distribution and they were indeed concentrated around the mean RMSE. The maximum error found was of 0.04 (4%) and the minimum of 0.02 (2%).
+
+```{r}
+suppressMessages(library(ggplot2))
+errors <- data.frame(Error = c(0.03, 0.04, 0.04, 0.02, 0.03, 0.03, 0.04))
+
+errors %>% ggplot(aes(x = Error)) +
+  geom_density(fill = "darkred", color = "lightyellow2") + 
+  xlim(0, 0.15) +  # Limit horizontal values
+  labs(
+    title = "Histogram of Errors from Model without Weather data",
+    x = "Values",
+    y = "Frequency"
+  ) +
+  theme_grey()
+```
+
+Meanwhile, when looking at the predictions from the model trained with weather data, RMSE and loss were considerably higher. The obtained loss in this case was of 0.0126, whilst the RMSE was of 0.113 (11%). Similarly, the histogram of errors coming from the predictions of the model trained with weather data shows a concentration of errors further in the x-axis. This time, the histogram falls apart from a normal distribution and demonstrates two modes. Hence, this model has presented to be less accurate, but also less certain.
 
 -   RMSE (comparison to other works)
 
--   Figure of errors
+```{r}
+errors <- data.frame(Error = c(0.12,0.13,0.12,0.11,0.11,0.11,0.09))
 
--   RMSE aggreagted.. (comparison- better because it makes sense)
+errors %>% ggplot(aes(x = Error)) +
+  geom_density(fill = "darkred", color = "lightyellow2") + 
+  xlim(0, 0.15) +  # Limit horizontal values
+  labs(
+    title = "Histogram of Errors from Model with Weather data",
+    x = "Values",
+    y = "Frequency"
+  ) +
+  theme_grey()
+```
 
--   time series plot
+These results have exposed a different response than the one expected, as weather data was supposed to support the predictions of NO2, as mentioned by @grundström2015 and @samal2021 . The outcome of this comparison could lead one to believe that the weather is not a main driver of $NO_2$ , although this correlation may not represent a causation. It is possible the feature engineering developed was not adequate for this data, as well as the fact that the architecture may not be set the most appropriately to work with covariables. Given that, in the figure below, one can also compare the weather featured data and the $NO_2$ data found in the training data set.
 
--   Spatial patterns plot
+![Relationship between weather featured data and NO2](fig/cor.png){fig-align="center"}
+
+Following the figure, there is some relationship between the variables, although it is not explicitly evident. Nevertheless, a neural network should be able to compute such a non-linear relationship, what does not really support the hypothesis that weather does not drive pollution. What must be considered is that the neural network one is dealing with is a motion capture neural network, so it is important to verify how how does $NO_2$ compare to each other to what refers to time. The following figure demonstrates the predicted timeslots and the weather surface for each of them.
+
+![Temporal relationship between weather related data and NO2 pollution](fig/weather_time_cor.png){fig-align="center"}
+
+This time, when looking at the temporal pattern, one can see that indeed the space is quite well respected in therms of the relationships between weather and $NO_2$, although temporally, the weather featured engineered data may not help explain pollution as well as expected. Not only has it inferior spatial resolution, but the temporal symbiosis between the phenomena may not be well captured in the relatively small study window, but also it may significantly decay the resolution of the pollution forecast: an important output of this work.
+
+### Spatio-temporal heteroscedasticity
+
+The final and perhaps most central part of this work was then to discuss the heteroscedasticity in space and in time, *i.e.,* how do the predictions and their errors behave in both space and time. In other to bring spotlight to this topic, the next figure shall support one in the analysis of both dimensional patterns.
+
+![Comparison between real values and predictions made with models using and not using weather data, together with their errors](fig/main_comparison.gif){fig-align="center"}
+
+local max and min
+
+predictions are even smoother than real values. with weather, too much
+
+without weather captures some spatial details. with time too (5th and 6th images)
+
+the no data area becomes the area where the errors are the most problematic
+
+with time, no weather decays, with weather not so much, as errors are higher, but are stable through time
+
+in the south east of the image, a plume of pollution shows up in the middle of the time series. the change is not well computed by any of the models, although it was located by all of them.
+
+there is more heteroscedasticity in space for the no weather, and also in time. although error is generally higher in weather model.
+
+is better with weather? depends what one is lookign for
+
+### Future Work
+
+-   use actual data and use the weather forecast : makes the validation more complex
+
+-   use the model training interpolation?
+
+-   use the different weather variables separatedly
 
 ## Conclusion
+
+7th July Feedback
+
+-   Time Series Issue (Truly FOrecast the Future). Difference between weather data and weather forecast
+
+-   Do not train where there's interpolated data: model may be training linear interpolation
+
+-   Pick better weather variable first

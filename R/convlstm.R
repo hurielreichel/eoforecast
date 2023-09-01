@@ -33,11 +33,16 @@ convlstm_cell <- nn_module(
 
   forward = function(x, prev_states) {
 
-    c(h_prev, c_prev) %<-% prev_states
+    h_prev <- prev_states[[1]]
+    c_prev <- prev_states[[2]]
 
     combined <- torch_cat(list(x, h_prev), dim = 2)  # concatenate along channel axis
     combined_conv <- self$conv(combined)
-    c(cc_i, cc_f, cc_o, cc_g) %<-% torch_split(combined_conv, self$hidden_dim, dim = 2)
+    gate_convs <- torch_split(combined_conv, self$hidden_dim, dim = 2)
+    cc_i <- gate_convs[[1]]
+    cc_f <- gate_convs[[2]]
+    cc_o <- gate_convs[[3]]
+    cc_g <- gate_convs[[4]]
 
     # input, forget, output, and cell gates (corresponding to torch's LSTM)
     i <- torch_sigmoid(cc_i)
@@ -161,11 +166,11 @@ train_convlstm <- function(train_dl,
                            val_dl,
                            num_epochs = 100,
                            plot_path = "vignettes/learning_curve.png",
-                           input_dim = 3,
-                           hidden_dims = c(5, 5, 1),
-                           kernel_sizes = c(3, 3, 3),
-                           n_layers = 3,
-                           lr = 0.001,
+                           input_dim = 1,
+                           hidden_dims = c(64, 1),
+                           kernel_sizes = c(3, 3),
+                           n_layers = 2,
+                           lr = 0.01,
                            .device){
 
   # model <- convlstm %>%
@@ -270,7 +275,7 @@ train_convlstm <- function(train_dl,
       epc <- c(epc, epoch)
 
       # # Early stopping
-      try(print(trn_loss[epoch - 40]))
+      try(print(trn_loss[epc]))
       # if (epoch >= 50 && mean(batch_losses, na.rm = TRUE) >= trn_loss[epoch - 40]) {
       #   cat("Validation loss did not improve. Early stopping...\n")
       #   break  # Stop training
@@ -280,27 +285,27 @@ train_convlstm <- function(train_dl,
 
     }
 
-    model$eval()
-    batch_losses <- c()
-
-    # disable gradient tracking to reduce memory usage
-    with_no_grad({
-      coro::loop(for (b in val_dl) {
-
-        # last-time-step output from last layer
-        preds <- model(b$x)[[2]][[2]][[1]]
-
-        loss <- nnf_mse_loss(preds, b$y)
-        cli::cli_alert_info(paste("Validation:", loss$item(), "\n"))
-        batch_losses <- c(batch_losses, ifelse(is.infinite(loss$item()), NA, loss$item()))
-      })
-    })
-
-    # Print Loss
-    if (epoch %% 10 == 0){
-      cat(sprintf("\nEpoch %d, validation loss:%3f\n", epoch, mean(batch_losses, na.rm = T)))
-      val_loss <- c(val_loss, mean(batch_losses, na.rm = T))
-    }
+    # model$eval()
+    # batch_losses <- c()
+    #
+    # # disable gradient tracking to reduce memory usage
+    # with_no_grad({
+    #   coro::loop(for (b in val_dl) {
+    #
+    #     # last-time-step output from last layer
+    #     preds <- model(b$x)[[2]][[2]][[1]]
+    #
+    #     loss <- nnf_mse_loss(preds, b$y)
+    #     cli::cli_alert_info(paste("Validation:", loss$item(), "\n"))
+    #     batch_losses <- c(batch_losses, ifelse(is.infinite(loss$item()), NA, loss$item()))
+    #   })
+    # })
+    #
+    # # Print Loss
+    # if (epoch %% 5 == 0){
+    #   cat(sprintf("\nEpoch %d, validation loss:%3f\n", epoch, mean(batch_losses, na.rm = T)))
+    #   val_loss <- c(val_loss, mean(batch_losses, na.rm = T))
+    # }
 
   }
 
@@ -314,7 +319,7 @@ train_convlstm <- function(train_dl,
       geom_line() +
       xlab("Epoch") +
       ylab("Loss") +
-      ggtitle("LOss Curve")
+      ggtitle("Loss Curve")
     ggsave(plot_path, learning_curve)
 
   } else{

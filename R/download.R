@@ -96,47 +96,96 @@ download_s5p_from_openeo <- function( country = NULL,
     cli::cli_rule();cli::cli_end()
 }
 
-create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", batch_size = 117, seq_len = 6, device) {
+
+#' Create Tensor Cubes
+#'
+#' @param path_to_tiffs
+#' @param window_size
+#'
+#' @return torch tensor
+#' @export
+#'
+#' @examples
+create_tensor_cube <- function(path_to_tiffs = "vignettes/data/switzerland", window_size = 30) {
 
   # Get all the file paths in the directory
   file_paths <- list.files(path = path_to_tiffs, pattern = "*\\.tif$", full.names = TRUE)
 
+  # Check if window_size is valid
+  if (window_size > length(file_paths)) {
+    stop("Window size is larger than the number of files available.")
+  }
+
+  # Create an initial sequence the size of the window
+  cube_window <- vector("list", window_size)
+  for (i in 1:window_size){
+    cube_window[[i]] <- raster(file_paths[[length(file_paths)-window_size+i]]) %>% as.matrix()
+    cube_window[[i]][is.na(cube_window[[i]])] <- 0
+    cube_window[[i]][is.nan(cube_window[[i]])] <- 0
+    cube_window[[i]][cube_window[[i]]<0] <- 0
+    cube_window[[i]][cube_window[[i]]>100] <- 0 # rough outlier removal
+    cube_window[[i]] <- cube_window[[i]] / 100 # scaling from 0 to 1
+    cube_window[[i]] <- cube_window[[i]] %>% torch_tensor()
+  }
+  init_seq <- torch_stack(cube_window, dim = 1)
+
   # Read the files and combine into a single array
-  cube_array <- array(0, dim = c(length(file_paths), 1, ncol(raster::raster(file_paths[[1]])), nrow(raster::raster(file_paths[[1]]))))
+  cube_rst <- vector("list", length(file_paths))
   for (i in seq_along(file_paths)) {
-    cube_array[i,,,] <- raster(file_paths[[i]])[]
+    cube_rst[[i]] <- raster(file_paths[[i]]) %>% as.matrix()
+    cube_rst[[i]][is.na(cube_rst[[i]])] <- 0
+    cube_rst[[i]][is.nan(cube_rst[[i]])] <- 0
+    cube_rst[[i]][cube_rst[[i]]<0] <- 0
+    cube_rst[[i]][cube_rst[[i]]>100] <- 0 # rough outlier removal
+    cube_rst[[i]] <- cube_rst[[i]] / 100 # scaling from 0 to 1
+    cube_rst[[i]] <- cube_rst[[i]] %>% torch_tensor()
   }
 
-  # Create sequence tensor
-  cube_array_seq <- array(0, dim = c(dim(cube_array)[1] - seq_len + 1, seq_len, dim(cube_array)[2], dim(cube_array)[3], dim(cube_array)[4]))
-  for (i in 1:(dim(cube_array)[1] - seq_len + 1)) {
-    cube_array_seq[i, , , ,] <- cube_array[i:(i + seq_len - 1), , ,]
+  # The data may not have a pair length, which complicates for the windows
+  # For this reason, we'll compute the remainder and not use the beginning of the
+  # time series, but only the "end"
+  beamed_size <-  as.integer(length(cube_rst) / window_size)
+  remainder <- length(cube_rst) %% beamed_size + 1
+  cube_rst <- cube_rst[remainder:length(cube_rst)]
+
+  cube_beams <- vector("list", beamed_size)
+  cube_beams[[1]] <- init_seq # beginning of our windows data will be forced
+  for (i in 2:beamed_size){
+    from = (i - 1) * window_size + 1
+    to = from + window_size - 1 # i am still ignoring 361
+    cube_beams[[i]] <- cube_rst[from:to] %>% torch_stack(., 1)
   }
 
-  rm(cube_array)
+  input <- torch_stack(cube_beams, dim = 2)
+  input <- input$unsqueeze(3) # create artificial dimension to squeeze into input format
+  input %>% dim()
+
+  rm(cube_rst, cube_window, cube_beams)
   gc()
 
   # Replace NAs and NaNs with 0
-  cube_array_seq[is.na(cube_array_seq)] <- 0
-  cube_array_seq[is.nan(cube_array_seq)] <- 0
-  cube_array_seq[cube_array_seq<0] <- 0
-  cube_array_seq[cube_array_seq>100] <- 0 # rough outlier removal
-
-  # Calculate minimum and maximum values
-  min_val <- min(cube_array_seq, na.rm = TRUE)
-  max_val <- max(cube_array_seq, na.rm = TRUE)
-
-  # Shift the values to have a minimum of 0
-  shifted_array <- cube_array_seq - min_val
-
-  # Scale the values between 0 and 1
-  cube_array_seq <- shifted_array / (max_val - min_val)
+  # cube_array_seq[is.na(cube_array_seq)] <- 0
+  # cube_array_seq[is.nan(cube_array_seq)] <- 0
+  # cube_array_seq[cube_array_seq<0] <- 0
+  # cube_array_seq[cube_array_seq>100] <- 0 # rough outlier removal
+  #
+  # # Calculate minimum and maximum values
+  # min_val <- min(cube_array_seq, na.rm = TRUE)
+  # max_val <- max(cube_array_seq, na.rm = TRUE)
+  #
+  # cli::cli_alert_info(paste("Min Value = ", min_val, "; Max Value =", max_val))
+  #
+  # # Shift the values to have a minimum of 0
+  # shifted_array <- cube_array_seq - min_val
+  #
+  # # Scale the values between 0 and 1
+  # cube_array_seq <- shifted_array / (max_val - min_val)
 
   # convert to tensor
-  cube_tensor <- torch_tensor(cube_array_seq, dtype = torch_float())
+  # cube_tensor <- torch_tensor(cube_array_seq, dtype = torch_float())
 
-  rm(cube_array_seq)
-  gc()
+  # rm(cube_array_seq)
+  # gc()
 
   # Convert cube_tensor to data frame
   # df <- reshape2::melt(cube_tensor %>% as.array(), varnames = c("Time", "Seq", "Channel", "X", "Y"))
@@ -153,8 +202,11 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
   # train_data <- cube_tensor[1:train_size, , , , ]
   # val_data <- cube_tensor[(train_size+1):dim(cube_tensor)[1], , , , ]
 
-  max_trn <- seq_len - 2
-  min_val <- seq_len - 1
+  # max_trn <- seq_len - 2
+  # min_val <- seq_len - 1
+
+  data_size = dim(input)[2]
+  trn_size = data_size - 1
 
   create_train_ds <- dataset(
 
@@ -163,7 +215,7 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
     },
 
     .getitem = function(i) {
-      list(x = self$data[i, 1:max_trn, ..], y = self$data[i, min_val, ..])
+      list(x = self$data[i, 1:trn_size, ..], y = self$data[i, data_size, ..])
     },
 
     .length = function() {
@@ -172,31 +224,31 @@ create_dl_from_cube <- function(path_to_tiffs = "vignettes/data/switzerland", ba
   )
 
   # Create dataloaders from the datasets
-  train_ds <- create_train_ds(cube_tensor)
-  train_dl <- dataloader(train_ds, batch_size = batch_size, shuffle = FALSE)
+  train_ds <- create_train_ds(input)
+  rm(input)
+  gc()
+  train_dl <- dataloader(train_ds, batch_size = window_size)
 
-  create_val_ds <- dataset(
+#   create_val_ds <- dataset(
+#
+#     initialize = function(data) {
+#       self$data <- data
+#     },
+#
+#     .getitem = function(i) {
+#       list(x = self$data[i, 1:5, ..], y = self$data[i, 6, ..])
+#     },
+#
+#     .length = function() {
+#       nrow(self$data)
+#     }
+#   )
+#
+#   val_ds <- create_val_ds(cube_tensor)
+#   val_dl <- dataloader(val_ds, batch_size = batch_size, shuffle = FALSE)
 
-    initialize = function(data) {
-      self$data <- data
-    },
-
-    .getitem = function(i) {
-      list(x = self$data[i, max_trn:min_val, ..], y = self$data[i, seq_len, ..])
-    },
-
-    .length = function() {
-      nrow(self$data)
-    }
-  )
-
-  val_ds <- create_val_ds(cube_tensor)
-  val_dl <- dataloader(val_ds, batch_size = batch_size, shuffle = FALSE)
-
-  return(list(train_dl, val_dl))
+  return(train_dl)
 }
-
-
 
 ## Create Dummy Data
 create_dummy_data <- function(){

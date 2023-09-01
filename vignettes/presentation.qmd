@@ -3,8 +3,8 @@ title: "NO2 Forecasting using Sentinel 5P and Weather Forecast data: "
 subtitle: "a Deep Learning Approach"
 author: "Huriel Reichel"
 institute: "University of Münster"
-logo: "fig/logo.jpg"
-footer: "[https://github.com/hurielreichel/eoforecast](github.com/hurielreichel/eoforecast)"
+logo: "https://th.bing.com/th/id/R.3f3dccc432e213a2787650d4b8eaf686?rik=pdnsnPrvOYzAgQ&pid=ImgRaw&r=0"
+footer: "[github.com/hurielreichel/eoforecast](https://github.com/hurielreichel/eoforecast)"
 progress: TRUE
 format: revealjs
 editor: visual
@@ -13,27 +13,21 @@ bibliography: "references.bib"
 
 ## Introduction
 
-### The Problem
+-   Nitrogen dioxide ($NO_2$ ) - Reference for Pollution @jo2021
+-   Time-Series Approaches and Physical Models @tsai2018
+    -   Deep Learning ? @pawul2016 @freeman2018 @shams2021 @samal2021
 
--   Nitrogen dioxide ($NO_2$ ) is a greenhouse gas strongly related to respiratory diseases
+        ![Source: EEA](https://www.eea.europa.eu/en/topics/in-depth/pollution/@@images/image-800-85cda4ea9bc664035d01c6e1bffaf73c.jpeg){width="400"}
 
--   Common Reference for Pollution - That's why forecast!
+## The Approach
 
--   Time-Series Approaches and Physical Models
-
--   Deep Learning can be an interesting solution
-
-## Introduction
-
-### The approach
-
--   Depending on the architecture, forecasts can compute both temporal and spatial patterns
+-   Time + Space
 
 -   ConvLSTM
 
-## Introduction
+    ![](fig/convlstm.png)
 
-### What else?
+## What else?
 
 -   Multivariate model: include weather related variables
 
@@ -45,50 +39,52 @@ bibliography: "references.bib"
 
 -   Is there a trend in future forecast in terms of space and time?
 
-## Introduction
-
-### Objectives
+## Objectives
 
 -   Use of a ConvLSTM to forecast $NO_2$ with the aid of weather covariables
+-   Comparison: ConvLSTM with and without weather covariables
 
--   Comparison of a ConvLSTM trained with weather covariables and another without in terms of accuracy and spatiotemporal heteroscedasticity
+#### Research Questions
 
-### Research Questions
-
--   To what extent can one make use of a ConvLSTM neural network to forecast daily $NO_2$ levels with SENTINEL 5P Imagery and weather related covariables?
-
--   How does a ConvLSTM neural network using SENTINEL 5P and weather data performs compared to the same model without weather covariables, and how does the accuracy decay behaves when trying to predict further in time ?
+-   To what extent can one make use of a ConvLSTM to forecast daily $NO_2$ levels with S5P Imagery and weather related covariables?
+-   How does a ConvLSTM using S5P and weather data perform compared to the same model without weather covariables?
 
 ## Methodology
 
-### Overview
-
-![An overview of the Methodology](fig/methods.png){fig-align="center"}
-
-## Methodology
-
-### Further Analysis
-
--   Model Performance
-
--   Learning Curve
-
--   Train-Test Splitting (80/20%) - RMSE
-
--   Error in temporal perspective
-
--   Error in spatial perspective
+![](fig/methods.png){fig-align="center"}
 
 ## Results
 
-#### Performance
+#### Learning Rate Curve
+
+![](fig/learning_rate.png){fig-align="center"}
+
+## Performance
 
 -   Weather:
 
+    -   RAM
+
+    -   \[350, 350, 6, 1 91, 40\]
+
+    -   Reduced Window and Batches
+
 -   No-weather:
 
-#### Learning Curve
+    -   \[350, 6, 1, 91, 40\]
 
-#### Error
+## Learning Curve
 
-## References
+![](learning_curve-sanity2.png){fig-align="center"}
+
+## On-Going Conclusions & Further Steps
+
+-   Further work on weather model mainly, Although it is clearly more complex to handle
+
+-   Further data wrangling : smooth out data
+
+-   R package
+
+-   First R torch ConvLSTM applied to real world scenario
+
+## Main References
