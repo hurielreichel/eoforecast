@@ -6,7 +6,7 @@ This repo is the main repo to my MSc Thesis in Spatial Data Science at the Unive
 
 The thesis code has been designed as an R package, which should handle dependecies **per se** to a certain extent. In [vignettes/](vignettes) you will find presentatations, files and the [vignettes/main-thesis.qmd](most reproducible way to run the whole thesis). 
 
-In [R/](R directory), you will find the R package modules, where you can look into more detail into the Neural Network Architecture, ETL, and coding in general. 
+In the [R/](R directory), you will find the R package modules, where you can look into more detail into the Neural Network Architecture, ETL, and coding in general. 
 
 The project itself is about forecasting NO_2 pollution in both space and time, making use of a network called CNN-LSTM, that inherits both space and time structures to make this possible. You will see a lot about spatial datacubes in there as well, and extreme 3D/4D matrices handling. To have a look at the final thesis version, go [vignettes/main-thesis.pdf](here).
 
